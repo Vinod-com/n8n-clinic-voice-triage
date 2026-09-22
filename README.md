@@ -50,3 +50,11 @@ Update the following credentials in your n8n instance:
 ## Security & Sanitization
 
 - **Credentials Sanitized:** Ensure that raw tokens (`sb_secret_*`, OAuth client secrets, or private API keys) are never committed to version control. Use environment variables or n8n Credential objects.
+---
+
+## Update Log: Conflict Detection & Branching Fixes
+- **Conflict Evaluation:** Calibrated `If (New Slot is Free?)` using strict Boolean logic to accurately separate available slots from collisions.
+- **Routing Fix:** Disabled `Always Output Data` on conditional nodes to eliminate duplicate executions and prevent dummy records on inactive branches.
+- **Dynamic Slot Preparation:** Updated `Prepare Slot Dates` to dynamically map slot windows (`timeMin` / `timeMax` buffers) from Supabase and extractor inputs.
+- **Notification Templates:** Fixed Telegram staff rejection template mappings to resolve `Invalid DateTime` and missing patient details.
+- **Resilience:** Configured auto-retry policies on LLM extraction nodes to handle upstream provider downtime.
