@@ -13,7 +13,29 @@ An automated clinic voice triage, booking, and cancellation pipeline built in [n
    - **True Path:** Proceeds with business logic (e.g., removing events from Google Calendar, flipping Supabase status to `cancelled`, dispatching confirmation alerts).
    - **False / Exception Path:** Routes to a specialized fallback node (`Format Fallback Data`) configured to run safely without breaking empty-array item lineages, then dispatches failure notifications.
 5. **Parallel Alerting (`Telegram Bots`):** Sends concurrent Markdown alerts to both clinic staff and patient channels without payload collisions.
+# 🏥 Clinic Voice AI Assistant — Engineering Handover & Milestone Report
 
+**Date:** September 23, 2026 (16:50 IST)  
+**Repository State:** Main workflow published and committed  
+**Scope:** Completion of Reschedule Pipeline & Database Preparation for Multi-Doctor Scaling
+
+---
+
+## 📌 Executive Summary
+
+All core branches for single-doctor appointment management (New Booking, Reschedule Success, Slot Conflict Rejection, and No Prior Booking Found Fallback) have been fully implemented, calibrated, tested end-to-end, and published live in n8n. 
+
+In addition, the architectural foundation for multi-doctor scaling has been laid: the Supabase `doctors` registry table has been created, populated with initial doctor records (`Dr. Smith` and `Dr. Mark`), and Google Calendar separation rules have been defined.
+
+---
+
+## 🛠️ Key Achievements & Verifications Completed Today
+
+### 1. Reschedule Fallback 2: "No Prior Booking Found"
+- **Problem Resolved:** Earlier test runs inadvertently queried cached phone numbers from previous executions (Row #65 / Rahul), causing the router to evaluate `True` rather than recognizing an unknown caller.
+- **Dynamic Supabase Query Fixed:** Updated `Find Booking to Reschedule` HTTP URL to resolve dynamically from multiple candidate payload keys with safe URL encoding:
+  ```text
+  [https://optbmkbhrrzavrogmoyl.supabase.co/rest/v1/appointments?patient_phone=eq](https://optbmkbhrrzavrogmoyl.supabase.co/rest/v1/appointments?patient_phone=eq).{{ encodeURIComponent($('Information Extractor').first().json.output?.patient_phone || $('Information Extractor').first().json.patient_phone || $('Vapi Post-Call Ingest').first().json.message?.customer?.number || '') }}
 ---
 
 ## Prerequisites
