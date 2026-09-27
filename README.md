@@ -1,82 +1,59 @@
-# Clinic Voice Triage & Automated Booking Workflow
+[Clinic Voice AI Agent System Prompt & Config.md](https://github.com/user-attachments/files/32703497/Clinic.Voice.AI.Agent.System.Prompt.Config.md)
+# Clinic Voice AI Agent: System Prompts, Schemas & Test Payloads
 
-An automated clinic voice triage, booking, and cancellation pipeline built in [n8n](https://n8n.io/). The system ingests post-call webhooks from [Vapi](https://vapi.ai/), queries and synchronizes appointment records in [Supabase](https://supabase.com/), manages events on [Google Calendar](https://calendar.google.com/), and sends real-time dispatch alerts to staff and patients via [Telegram](https://telegram.org/).
-
----
-
-## Architecture & Flow Overview
-
-1. **Ingestion (`Vapi Post-Call Ingest`):** Receives end-of-call webhooks containing call metadata, transcript strings, and caller details.
-2. **Entity & Intent Extraction (`Information Extractor`):** Extracts caller name, phone number, and action intent (e.g., booking, cancellation, rescheduling).
-3. **Database Lookups (`Supabase`):** Verifies whether matching active appointments exist for the caller.
-4. **Conditional Routing (`If (Booking Found?)`):**
-   - **True Path:** Proceeds with business logic (e.g., removing events from Google Calendar, flipping Supabase status to `cancelled`, dispatching confirmation alerts).
-   - **False / Exception Path:** Routes to a specialized fallback node (`Format Fallback Data`) configured to run safely without breaking empty-array item lineages, then dispatches failure notifications.
-5. **Parallel Alerting (`Telegram Bots`):** Sends concurrent Markdown alerts to both clinic staff and patient channels without payload collisions.
-# 🏥 Clinic Voice AI Assistant — Engineering Handover & Milestone Report
-
-**Date:** September 23, 2026 (16:50 IST)  
-**Repository State:** Main workflow published and committed  
-**Scope:** Completion of Reschedule Pipeline & Database Preparation for Multi-Doctor Scaling
+This document defines the core prompt configuration, structured JSON schema, triage routing rules, and mock test fixtures for the AI Voice Agent orchestration layer (Vapi + Gemini + n8n + Supabase + Google Calendar + Telegram).
 
 ---
 
-## 📌 Executive Summary
+## 1. Information Extractor Node Configuration
 
-All core branches for single-doctor appointment management (New Booking, Reschedule Success, Slot Conflict Rejection, and No Prior Booking Found Fallback) have been fully implemented, calibrated, tested end-to-end, and published live in n8n. 
+### 1.1 JSON Input Schema (Draft-07)
+Enforces deterministic extraction across clinical intents, symptom-to-specialty classification, and temporal expressions.
 
-In addition, the architectural foundation for multi-doctor scaling has been laid: the Supabase `doctors` registry table has been created, populated with initial doctor records (`Dr. Smith` and `Dr. Mark`), and Google Calendar separation rules have been defined.
-
----
-
-## 🛠️ Key Achievements & Verifications Completed Today
-
-### 1. Reschedule Fallback 2: "No Prior Booking Found"
-- **Problem Resolved:** Earlier test runs inadvertently queried cached phone numbers from previous executions (Row #65 / Rahul), causing the router to evaluate `True` rather than recognizing an unknown caller.
-- **Dynamic Supabase Query Fixed:** Updated `Find Booking to Reschedule` HTTP URL to resolve dynamically from multiple candidate payload keys with safe URL encoding:
-  ```text
-  [https://optbmkbhrrzavrogmoyl.supabase.co/rest/v1/appointments?patient_phone=eq](https://optbmkbhrrzavrogmoyl.supabase.co/rest/v1/appointments?patient_phone=eq).{{ encodeURIComponent($('Information Extractor').first().json.output?.patient_phone || $('Information Extractor').first().json.patient_phone || $('Vapi Post-Call Ingest').first().json.message?.customer?.number || '') }}
----
-
-## Prerequisites
-
-- **n8n:** Self-hosted (Docker) or Cloud instance.
-- **Vapi Account:** Configured voice assistant pointing end-of-call server webhooks to your n8n webhook URL.
-- **Supabase Project:** PostgreSQL database storing appointment rows (with columns for `caller_phone`, `patient_name`, `status`, `calendar_event_id`, etc.).
-- **Google Cloud Console:** OAuth2 credentials or Service Account with Google Calendar API scope enabled.
-- **Telegram:** Two bot tokens created via [@BotFather](https://t.me/botfather) (one for clinic staff triage alerts, one for patient updates).
-
----
-
-## Setup & Installation
-
-### 1. Import Workflow to n8n
-1. Clone or download this repository.
-2. Open your n8n workspace.
-3. Click the menu icon (**`...`**) in the top-right corner > **Import from File**.
-4. Select `clinic-voice-triage.json`.
-
-### 2. Configure Credentials
-Update the following credentials in your n8n instance:
-- **Supabase API:** Add your Supabase Project URL and Service Role Key. *(Note: Ensure secrets are configured via n8n Credential Manager and not hardcoded directly inside HTTP node headers).*
-- **Google Calendar OAuth2:** Authenticate with your Google account.
-- **Telegram Bot 1 (Staff):** Enter the Bot Token and destination Chat/Channel ID.
-- **Telegram Bot 2 (Patient):** Enter the Bot Token and dynamic/static Chat ID.
-
-### 3. Activate Webhook
-- Activate the workflow in n8n.
-- Copy the **Production Webhook URL** from `Vapi Post-Call Ingest` and paste it into the **Server URL** setting in your Vapi assistant dashboard.
-
----
-
-## Security & Sanitization
-
-- **Credentials Sanitized:** Ensure that raw tokens (`sb_secret_*`, OAuth client secrets, or private API keys) are never committed to version control. Use environment variables or n8n Credential objects.
----
-
-## Update Log: Conflict Detection & Branching Fixes
-- **Conflict Evaluation:** Calibrated `If (New Slot is Free?)` using strict Boolean logic to accurately separate available slots from collisions.
-- **Routing Fix:** Disabled `Always Output Data` on conditional nodes to eliminate duplicate executions and prevent dummy records on inactive branches.
-- **Dynamic Slot Preparation:** Updated `Prepare Slot Dates` to dynamically map slot windows (`timeMin` / `timeMax` buffers) from Supabase and extractor inputs.
-- **Notification Templates:** Fixed Telegram staff rejection template mappings to resolve `Invalid DateTime` and missing patient details.
-- **Resilience:** Configured auto-retry policies on LLM extraction nodes to handle upstream provider downtime.
+```json
+{
+  "$schema": "[http://json-schema.org/draft-07/schema#](http://json-schema.org/draft-07/schema#)",
+  "type": "object",
+  "properties": {
+    "patient_intent": {
+      "type": "string",
+      "enum": ["book_appointment", "reschedule", "cancel", "emergency"],
+      "description": "Primary clinical intent of the call."
+    },
+    "urgency": {
+      "type": "string",
+      "enum": ["standard", "emergency"],
+      "description": "Strictly set to 'emergency' if acute symptoms are reported. Otherwise 'standard'."
+    },
+    "specialty": {
+      "type": "string",
+      "enum": ["General Medicine", "ENT", "Dentistry", "Pulmonology"],
+      "description": "Clinical department mapped from symptoms: 'Dentistry' for tooth/gum issues; 'ENT' for ear, nose, throat; 'Pulmonology' for chest/asthma issues; 'General Medicine' for stomach ache, fever, cough, checkups, or unspecified issues."
+    },
+    "patient_name": {
+      "type": "string",
+      "description": "Full name of the patient mentioned in the transcript. If not stated, return an empty string."
+    },
+    "patient_phone": {
+      "type": ["string", "null"],
+      "description": "Caller phone number if explicitly spoken in audio, normalized to E.164. Otherwise null."
+    },
+    "doctor_name": {
+      "type": ["string", "null"],
+      "description": "Requested practitioner name if specified. Otherwise null."
+    },
+    "appointment_start": {
+      "type": ["string", "null"],
+      "description": "Target appointment start timestamp in ISO 8601 format. Otherwise null."
+    },
+    "appointment_end": {
+      "type": ["string", "null"],
+      "description": "Target appointment end timestamp in ISO 8601 format. Otherwise null."
+    },
+    "chief_complaint": {
+      "type": ["string", "null"],
+      "description": "Summary of symptoms or reason for the call. Otherwise null."
+    }
+  },
+  "required": ["patient_intent", "urgency", "specialty", "patient_name"]
+}
