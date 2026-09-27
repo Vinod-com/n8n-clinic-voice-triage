@@ -3,22 +3,6 @@
   "nodes": [
     {
       "parameters": {
-        "httpMethod": "POST",
-        "path": "vapi-call-event",
-        "options": {}
-      },
-      "id": "5a94c8c9-37b9-4ead-98a6-691eb02ca641",
-      "name": "Vapi Post-Call Ingest",
-      "type": "n8n-nodes-base.webhook",
-      "typeVersion": 2,
-      "position": [
-        -464,
-        1440
-      ],
-      "webhookId": "vapi-call-event"
-    },
-    {
-      "parameters": {
         "rules": {
           "values": [
             {
@@ -31,7 +15,7 @@
                 },
                 "conditions": [
                   {
-                    "leftValue": "={{ $json.output.urgency }}",
+                    "leftValue": "={{ $('Information Extractor').first().json.output?.patient_intent || $('Information Extractor').first().json.patient_intent }}",
                     "rightValue": "emergency",
                     "operator": {
                       "type": "string",
@@ -55,7 +39,7 @@
                 },
                 "conditions": [
                   {
-                    "leftValue": "={{ $json.output.patient_intent }}",
+                    "leftValue": "={{ $('Information Extractor').first().json.output?.patient_intent || $('Information Extractor').first().json.patient_intent }}",
                     "rightValue": "reschedule",
                     "operator": {
                       "type": "string",
@@ -80,7 +64,7 @@
                 "conditions": [
                   {
                     "id": "914f18d6-19cc-46eb-9852-8d442f1fff9b",
-                    "leftValue": "={{ $json.output.patient_intent }}",
+                    "leftValue": "={{ $('Information Extractor').first().json.output?.patient_intent || $('Information Extractor').first().json.patient_intent }}",
                     "rightValue": "book_appointment",
                     "operator": {
                       "type": "string",
@@ -105,7 +89,7 @@
                 "conditions": [
                   {
                     "id": "d5f3504d-175d-4ba2-a2d1-8d896080e053",
-                    "leftValue": "={{ $json.output.patient_intent }}",
+                    "leftValue": "={{ $('Information Extractor').first().json.output?.patient_intent || $('Information Extractor').first().json.patient_intent }}",
                     "rightValue": "cancel",
                     "operator": {
                       "type": "string",
@@ -130,21 +114,21 @@
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.2,
       "position": [
-        560,
-        1392
+        528,
+        1264
       ]
     },
     {
       "parameters": {
         "chatId": "8687974473",
-        "text": "=✅ New Appointment Confirmed (Staff Alert)\n\n👤 Patient: {{ $('Information Extractor').first().json.patient_name || $('Information Extractor').first().json.output?.patient_name || 'Patient' }}\n📞 Phone: {{ $('Parse Telegram Input').first().json.incoming_phone || $('Information Extractor').first().json.patient_phone || $('Information Extractor').first().json.output?.patient_phone || '+15551234567' }}\n🩺 Reason: {{ $('Information Extractor').first().json.chief_complaint || $('Information Extractor').first().json.output?.chief_complaint || 'Routine checkup' }}\n👨‍⚕️ Doctor: {{ $('Information Extractor').first().json.doctor_name || $('Information Extractor').first().json.output?.doctor_name || 'Dr. Smith' }}\n🗓️ Slot: {{ $('Book Google Calendar Slot').first().json.start.dateTime }}\n🆔 Event ID: {{ $('Book Google Calendar Slot').first().json.id }}",
+        "text": "=✅ New Appointment Confirmed (Staff Alert)\n\n👤 Patient: {{ $('Information Extractor').first().json.patient_name || $('Information Extractor').first().json.output?.patient_name || 'Patient' }}\n📞 Phone: {{ $('Information Extractor').first().json.output?.patient_phone || $('Information Extractor').first().json.output?.caller_phone || $('Information Extractor').first().json.patient_phone || $('Vapi Post-Call Ingest').first().json.message?.customer?.number || 'N/A (Not Provided)' }}\n🩺 Reason: {{ $('Information Extractor').first().json.chief_complaint || $('Information Extractor').first().json.output?.chief_complaint || 'Routine checkup' }}\n👨‍⚕️ Doctor: {{ $('Information Extractor').first().json.doctor_name || $('Information Extractor').first().json.output?.doctor_name || 'Dr. Smith' }}\n🗓️ Slot: {{ DateTime.fromISO($('Book Google Calendar Slot').first().json?.start?.dateTime || '').setZone('Asia/Kolkata').toFormat(\"dd-MM-yyyy 'at' hh:mm a\") }}\n🆔 Event ID: {{ $('Book Google Calendar Slot').first().json.id }}",
         "additionalFields": {}
       },
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
       "position": [
-        1904,
-        1776
+        1872,
+        1408
       ],
       "id": "17a852f0-c750-447b-b6a3-0ee4f7e41ae9",
       "name": "Send Staff Confirmation",
@@ -158,15 +142,32 @@
     },
     {
       "parameters": {
-        "chatId": "=8819045433",
-        "text": "=✅ Appointment Confirmed\n\nDear {{ $('Information Extractor').first().json.patient_name || $('Information Extractor').first().json.output?.patient_name || 'Patient' }},\n\nYour appointment with {{ $('Information Extractor').first().json.doctor_name || $('Information Extractor').first().json.output?.doctor_name || 'Dr. Smith' }} has been successfully scheduled!\n\n🗓️ Date & Time: {{ $('Book Google Calendar Slot').first().json.start.dateTime ? $('Book Google Calendar Slot').first().json.start.dateTime.toDateTime().format('cccc, MMMM dd, yyyy at hh:mm a') : 'Tuesday, September 22, 2026 at 10:00 AM' }}\n\nIf you need to reschedule or cancel your visit, simply call our clinic line or reply here.",
+        "chatId": "={{ $('HTTP Request').first().json.telegram_chat_id || $('HTTP Request').first().json[0]?.telegram_chat_id }}",
+        "text": "=Dear {{ $('Information Extractor').first().json.output?.patient_name || $('Information Extractor').first().json.patient_name || 'Patient' }},\n\nYour appointment with {{ $('Lookup Doctor').first().json.name || $('Lookup Doctor').first().json[0]?.name || 'Dr. Mark' }} has been successfully scheduled!\n\n🗓️ Date & Time: {{ DateTime.fromISO($('Information Extractor').first().json.output?.appointment_start || $('Information Extractor').first().json.appointment_start).setZone('Asia/Kolkata').toFormat('cccc, LLLL dd, yyyy \\'at\\' hh:mm a') }}\n🩺 Reason: {{ $('Information Extractor').first().json.output?.chief_complaint || $('Information Extractor').first().json.chief_complaint || 'Consultation' }}\n\nIf you need to reschedule or cancel your visit, simply call our clinic line or reply here.",
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": {
+          "rows": [
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "📅 Add to Google Calendar",
+                    "additionalFields": {
+                      "url": "=https://calendar.google.com/calendar/render?action=TEMPLATE&text={{ encodeURIComponent('Doctor Appointment - Clinic') }}&dates={{ DateTime.fromISO($('Information Extractor').first().json.output?.appointment_start || $('Information Extractor').first().json.appointment_start).toUTC().toFormat('yyyyLLdd\\'T\\'HHmmss\\'Z\\'') }}/{{ DateTime.fromISO($('Information Extractor').first().json.output?.appointment_end || $('Information Extractor').first().json.appointment_end || DateTime.fromISO($('Information Extractor').first().json.output?.appointment_start || $('Information Extractor').first().json.appointment_start).plus({ minutes: 30 })).toUTC().toFormat('yyyyLLdd\\'T\\'HHmmss\\'Z\\'') }}&details={{ encodeURIComponent('Confirmed appointment at the clinic.') }}&location={{ encodeURIComponent('Clinic Address, Kolkata') }}"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
         "additionalFields": {}
       },
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
       "position": [
-        2128,
-        1776
+        2320,
+        1408
       ],
       "id": "8886ba0a-017e-41bf-b584-f900ef2b6e6b",
       "name": "Send Patient Confirmation",
@@ -181,7 +182,7 @@
     {
       "parameters": {
         "chatId": "=8687974473",
-        "text": "=⚠️ Booking Conflict Detected!\n\n👤 Patient: {{ $('Information Extractor').first().json.patient_name || $('Find Booking to Reschedule').first().json.patient_name || 'Rahul' }}\n📞 Phone: {{ $('Information Extractor').first().json.patient_phone || $('Find Booking to Reschedule').first().json.patient_phone || $('Find Booking to Reschedule').first().json.phone }}\n🗓️ Requested Slot: {{ $('Information Extractor').first().json.appointment_display || DateTime.fromISO($('Prepare Slot Dates').first().json.slot_start).setZone('Asia/Kolkata').toFormat('dd LLL yyyy, hh:mm a') }}\n🩺 Reason: {{ $('Information Extractor').first().json.reason || $('Find Booking to Reschedule').first().json.reason_for_visit || 'Appointment Reschedule' }}\n\nStatus: Slot is already occupied on Clinic Appointments calendar. Please call the patient to reschedule.",
+        "text": "=⚠️ Booking Conflict Detected!\n\n👤 Patient: {{ $('Information Extractor').first()?.json?.output?.patient_name || $('Information Extractor').first()?.json?.patient_name || $('Find Booking to Reschedule').first()?.json?.patient_name || 'Patient' }}\n📞 Phone: {{ $('Information Extractor').first()?.json?.output?.patient_phone || $('Information Extractor').first()?.json?.patient_phone || $('Find Booking to Reschedule').first()?.json?.patient_phone || $('Find Booking to Reschedule').first()?.json?.phone || $('Vapi Post-Call Ingest').first()?.json?.message?.customer?.number || 'N/A' }}\n🗓️ Requested Slot: {{ $('Information Extractor').first()?.json?.output?.appointment_start ? DateTime.fromISO($('Information Extractor').first().json.output.appointment_start).setZone('Asia/Kolkata').toFormat('dd LLL yyyy, hh:mm a') : ($('Information Extractor').first()?.json?.appointment_start ? DateTime.fromISO($('Information Extractor').first().json.appointment_start).setZone('Asia/Kolkata').toFormat('dd LLL yyyy, hh:mm a') : ($('Prepare Slot Dates').first()?.json?.slot_start ? DateTime.fromISO($('Prepare Slot Dates').first().json.slot_start).setZone('Asia/Kolkata').toFormat('dd LLL yyyy, hh:mm a') : 'N/A')) }}\n🩺 Reason: {{ $('Information Extractor').first()?.json?.output?.chief_complaint || $('Information Extractor').first()?.json?.chief_complaint || $('Information Extractor').first()?.json?.reason || $('Find Booking to Reschedule').first()?.json?.reason_for_visit || 'Appointment Request' }}\n\nStatus: Slot is already occupied on Clinic Appointments calendar. Please call the patient to reschedule.",
         "additionalFields": {
           "appendAttribution": false
         }
@@ -189,8 +190,8 @@
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
       "position": [
-        2128,
-        1344
+        2320,
+        1120
       ],
       "id": "dbb35107-333b-48b4-908d-79190c3d7a69",
       "name": "Send Staff Rejection Notice",
@@ -211,9 +212,9 @@
         "filters": {
           "conditions": [
             {
-              "keyName": "patient_phone",
+              "keyName": "id",
               "condition": "eq",
-              "keyValue": "={{ $('Information Extractor').item.json.patient_phone }}"
+              "keyValue": "={{ $('Prepare Slot Dates').first().json.booking_id }}"
             }
           ]
         },
@@ -221,7 +222,7 @@
           "fieldValues": [
             {
               "fieldId": "status",
-              "fieldValue": "confirmed"
+              "fieldValue": "reschedule_conflict"
             },
             {
               "fieldId": "calendar_event_id",
@@ -233,8 +234,8 @@
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
       "position": [
-        1904,
-        1344
+        2096,
+        1120
       ],
       "id": "c8360c4c-99ed-43c6-8ad5-b224c049a66f",
       "name": "Update a row (Rejected)",
@@ -243,35 +244,6 @@
         "supabaseApi": {
           "id": "ZkIgYlLYiPcNzovJ",
           "name": "Supabase account 2"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "operation": "getAll",
-        "calendar": {
-          "__rl": true,
-          "value": "8a68a602c4cc20fedd0b7e30e4b3402cbe48a92fbb6f34d06b5f6bc01f9ee66f@group.calendar.google.com",
-          "mode": "list",
-          "cachedResultName": "Clinic Appointments"
-        },
-        "timeMin": "={{ $('Information Extractor').first().json.output?.appointment_start || $('Information Extractor').first().json.appointment_start || $('Vapi Post-Call Ingest').first().json.message?.analysis?.structuredData?.requested_new_appointment_start || $json.appointment_start }}",
-        "timeMax": "={{ $('Information Extractor').first().json.output?.appointment_end || $('Information Extractor').first().json.appointment_end || $('Vapi Post-Call Ingest').first().json.message?.analysis?.structuredData?.requested_new_appointment_end || $json.appointment_end }}",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.googleCalendar",
-      "typeVersion": 1.3,
-      "position": [
-        784,
-        1712
-      ],
-      "id": "72fcfe0a-c4d2-4929-8ffa-0304122cfb89",
-      "name": "Check Calendar Slot",
-      "alwaysOutputData": true,
-      "credentials": {
-        "googleCalendarOAuth2Api": {
-          "id": "nHI98rSemdX3Pxog",
-          "name": "Google Calendar account 2"
         }
       }
     },
@@ -302,8 +274,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        1008,
-        1712
+        976,
+        1504
       ],
       "id": "726bb499-367d-48f3-81b3-0f2ac3780db7",
       "name": "If (Slot is Free?)"
@@ -336,8 +308,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        1008,
-        1200
+        976,
+        1120
       ],
       "id": "c3bf15e0-4c9e-4871-b00e-a18fd5103405",
       "name": "If (Booking Found?)"
@@ -347,9 +319,8 @@
         "operation": "getAll",
         "calendar": {
           "__rl": true,
-          "mode": "id",
-          "value": "8a68a602c4cc20fedd0b7e30e4b3402cbe48a92fbb6f34d06b5f6bc01f9ee66f@group.calendar.google.com",
-          "__regex": "(^[a-zA-Z0-9.!#$%&’*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\\.[a-zA-Z0-9-]+)*)"
+          "value": "={{ $('Prepare Slot Dates').first().json.calendar_id || $('Lookup Doctor').first()?.json?.calendar_id }}",
+          "mode": "id"
         },
         "limit": 10,
         "timeMin": "={{ DateTime.fromISO($('Prepare Slot Dates').first().json.slot_start).minus({ minutes: 1 }).toISO() }}",
@@ -359,8 +330,8 @@
       "type": "n8n-nodes-base.googleCalendar",
       "typeVersion": 1.3,
       "position": [
-        1456,
-        1200
+        1424,
+        1024
       ],
       "id": "0408221a-5b1a-4419-90e9-09ef704eb503",
       "name": "Check New Slot Availability",
@@ -384,7 +355,7 @@
           "conditions": [
             {
               "id": "4dbaa4e1-b4de-4661-ac3f-6a35a8c525e4",
-              "leftValue": "={{ $items(\"Check New Slot Availability\").length === 0 || ($items(\"Check New Slot Availability\").length === 1 && $items(\"Check New Slot Availability\")[0].json.id === $('Prepare Slot Dates').first().json.existing_event_id) }}",
+              "leftValue": "={{ $json.is_slot_free }}",
               "rightValue": 0,
               "operator": {
                 "type": "boolean",
@@ -401,8 +372,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        1680,
-        1200
+        1872,
+        1024
       ],
       "id": "782e23f7-82e3-42f4-b7d6-8f886e3b42f1",
       "name": "If (New Slot is Free?)",
@@ -414,9 +385,8 @@
         "operation": "update",
         "calendar": {
           "__rl": true,
-          "value": "8a68a602c4cc20fedd0b7e30e4b3402cbe48a92fbb6f34d06b5f6bc01f9ee66f@group.calendar.google.com",
-          "mode": "list",
-          "cachedResultName": "Clinic Appointments"
+          "value": "={{ $('Lookup Doctor').first().json[0]?.calendar_id || $('Lookup Doctor').first().json.calendar_id }}",
+          "mode": "id"
         },
         "eventId": "={{ $('Prepare Slot Dates').item.json.existing_event_id }}",
         "updateFields": {
@@ -427,8 +397,8 @@
       "type": "n8n-nodes-base.googleCalendar",
       "typeVersion": 1.3,
       "position": [
-        1904,
-        1104
+        2096,
+        928
       ],
       "id": "79b2595b-387a-4ce1-a3ad-bc43e348aa2d",
       "name": "Google Calendar - Move Event",
@@ -442,7 +412,7 @@
     {
       "parameters": {
         "chatId": "8687974473",
-        "text": "=🗓️ Appointment Rescheduled (Staff Alert)\n\n• Patient: {{ $('Information Extractor').first().json.output.patient_name }}\n• Phone: {{ $('Prepare Slot Dates').first().json.patient_phone || $('Find Booking to Reschedule').first().json.patient_phone }}\n• Doctor: {{ $('Information Extractor').first().json.output.doctor_name }}\n• New Slot: {{ $('Information Extractor').first().json.output.appointment_start.toDateTime().format(\"cccc, MMMM dd, yyyy 'at' hh:mm a\") }}\n• Reason: {{ $('Information Extractor').first().json.output.chief_complaint || 'General follow-up' }}\n• Status: Confirmed",
+        "text": "=🗓️ Appointment Rescheduled (Staff Alert)\n\n• Patient: {{ $('Prepare Slot Dates').first().json.patient_name }}\n• Phone: {{ $('Prepare Slot Dates').first().json.patient_phone || $('Find Booking to Reschedule').first().json.patient_phone }}\n• Doctor: {{ $('Prepare Slot Dates').first().json.doctor_name }}\n• New Slot: {{ DateTime.fromISO($('Prepare Slot Dates').first().json.slot_start).setZone('Asia/Kolkata').toFormat(\"cccc, MMMM dd, yyyy 'at' hh:mm a\") }}\n• Reason: {{ $('Information Extractor').first()?.json?.output?.chief_complaint || 'General follow-up' }}\n• Status: Confirmed",
         "additionalFields": {
           "appendAttribution": false
         }
@@ -450,8 +420,8 @@
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
       "position": [
-        2352,
-        1104
+        2544,
+        928
       ],
       "id": "5cbbf7f9-2b50-4f2c-98df-aa5e1d040bde",
       "name": "Send Staff Reschedule Alert",
@@ -466,7 +436,24 @@
     {
       "parameters": {
         "chatId": "=8819045433",
-        "text": "=✅ Appointment Rescheduled Successfully!\n\nDear {{ $('Information Extractor').first().json.output?.patient_name || $('Prepare Slot Dates').first().json.patient_name || $('Find Booking to Reschedule').first().json.patient_name || 'Patient' }},\n\nYour appointment with {{ $('Information Extractor').first().json.output?.doctor_name || $('Find Booking to Reschedule').first().json.doctor_name || 'Dr. Smith' }} has been successfully moved to:\n🗓️ {{ ($('Prepare Slot Dates').first().json.formatted_slot || $('Prepare Slot Dates').first().json.new_slot_start || $('Information Extractor').first().json.output?.appointment_start)?.toDateTime?.()?.format(\"cccc, MMMM dd, yyyy 'at' hh:mm a\") || $('Prepare Slot Dates').first().json.formatted_slot || 'Wednesday, September 23, 2026 at 04:00 PM' }}\n\nIf you need any further changes, feel free to contact us.",
+        "text": "=🗓️ Appointment Rescheduled Successfully!\n\nDear {{ $('Prepare Slot Dates').first().json.patient_name }},\n\nYour appointment with {{ $('Prepare Slot Dates').first().json.doctor_name }} has been successfully moved to: {{ DateTime.fromISO($('Prepare Slot Dates').first().json.slot_start).setZone('Asia/Kolkata').toFormat(\"cccc, MMMM dd, yyyy 'at' hh:mm a\") }}\n\nIf you need any further changes, feel free to contact us.",
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": {
+          "rows": [
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "=🗓️ Save Rescheduled Slot to Calendar",
+                    "additionalFields": {
+                      "url": "=https://calendar.google.com/calendar/render?action=TEMPLATE&text={{ encodeURIComponent('Doctor Appointment (Rescheduled) - Clinic') }}&dates={{ DateTime.fromISO($('Information Extractor').first().json.output?.appointment_start || $('Information Extractor').first().json.appointment_start).toUTC().toFormat('yyyyLLdd\\'T\\'HHmmss\\'Z\\'') }}/{{ DateTime.fromISO($('Information Extractor').first().json.output?.appointment_end || $('Information Extractor').first().json.appointment_end || DateTime.fromISO($('Information Extractor').first().json.output?.appointment_start || $('Information Extractor').first().json.appointment_start).plus({ minutes: 30 })).toUTC().toFormat('yyyyLLdd\\'T\\'HHmmss\\'Z\\'') }}&details={{ encodeURIComponent('Rescheduled appointment. Note: Please remember to delete or discard your previous calendar slot.') }}&location={{ encodeURIComponent('Clinic Address, Kolkata') }}"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
         "additionalFields": {
           "appendAttribution": false
         }
@@ -474,8 +461,8 @@
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
       "position": [
-        2576,
-        1104
+        2768,
+        928
       ],
       "id": "cd9d150d-277c-485c-bb47-2308d683a24e",
       "name": "Send Patient Reschedule Confirmed",
@@ -489,28 +476,28 @@
     },
     {
       "parameters": {
-        "jsCode": "// 1. Fetch extractor payload\nconst extractorNode = $('Information Extractor').first()?.json;\nconst extractorData = extractorNode?.output || extractorNode || {};\n\n// 2. Fetch the existing booking record from Supabase\nconst existingBooking = $('Find Booking to Reschedule').first()?.json || {};\n\n// 3. Target reschedule slot requested by the patient\n// (If extractor fails during test, it falls back to Rahul's target conflict slot: Sept 23, 2:00 PM IST)\nconst startIso = extractorData.appointment_start \n  || extractorData.new_appointment_time \n  || '2026-09-23T14:00:00+05:30';\n\nconst startDate = new Date(startIso);\n\nlet endDate;\nif (extractorData.appointment_end) {\n  endDate = new Date(extractorData.appointment_end);\n} else {\n  endDate = new Date(startDate.getTime() + (30 * 60 * 1000));\n}\n\n// 4. Resolve the existing calendar event ID and booking ID\nconst eventId = existingBooking.calendar_event_id \n  || existingBooking.google_event_id \n  || existingBooking.event_id \n  || 'r5slnf730r7hlbpe1gd7s21070'; // Rahul's calendar event ID on Sept 25\n\nreturn [\n  {\n    json: {\n      existing_event_id: eventId,\n      booking_id: existingBooking.id || 65,\n      patient_name: extractorData.patient_name || existingBooking.patient_name || 'Rahul',\n      patient_phone: extractorData.patient_phone || existingBooking.patient_phone || '+919830127501',\n      doctor_name: extractorData.doctor_name || existingBooking.doctor_name || 'Doctor',\n      slot_start: startDate.toISOString(),\n      slot_end: endDate.toISOString()\n    }\n  }\n];"
+        "jsCode": "// 1. Fetch extractor payload\nconst extractorNode = $('Information Extractor').first()?.json;\nconst extractorData = extractorNode?.output || extractorNode || {};\n\n// 2. Fetch the existing booking record with embedded joins from Supabase\nconst existingBooking = $('Find Booking to Reschedule').first()?.json || {};\nconst patient = existingBooking.patients || {};\nconst doctor = existingBooking.doctors || {};\n\n// 3. Target reschedule slot requested by the patient\nconst startIso = extractorData.appointment_start \n  || extractorData.new_appointment_time \n  || '2026-09-28T14:00:00+05:30';\n\nconst startDate = new Date(startIso);\n\nlet endDate;\nif (extractorData.appointment_end) {\n  endDate = new Date(extractorData.appointment_end);\n} else {\n  endDate = new Date(startDate.getTime() + (30 * 60 * 1000));\n}\n\n// 4. Resolve calendar event ID and identifiers\nconst eventId = existingBooking.calendar_event_id \n  || existingBooking.google_event_id \n  || existingBooking.event_id;\n\nreturn [\n  {\n    json: {\n      existing_event_id: eventId,\n      booking_id: existingBooking.id,\n      patient_id: existingBooking.patient_id,\n      patient_name: patient.patient_name || existingBooking.patient_name || 'Rahul Rampuria',\n      patient_phone: patient.patient_phone || existingBooking.patient_phone || '+919830127501',\n      telegram_chat_id: patient.telegram_chat_id,\n      doctor_id: existingBooking.doctor_id,\n      doctor_name: doctor.name || existingBooking.doctor_name || 'Dr. Smith',\n      calendar_id: doctor.calendar_id,\n      slot_start: startDate.toISOString(),\n      slot_end: endDate.toISOString()\n    }\n  }\n];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1232,
-        1200
+        1200,
+        1024
       ],
       "id": "cd900599-7140-47a6-a290-0e7cdf867a20",
       "name": "Prepare Slot Dates"
     },
     {
       "parameters": {
-        "chatId": "8687974473",
-        "text": "=🚨 URGENT: Emergency Medical Call Detected!\n\n• Patient: {{ $('Information Extractor').first().json.patient_name }}\n• Phone: {{ $('Information Extractor').first().json.patient_phone }}\n• Reason / Symptoms: {{ $json.reason || $json.reason_for_visit }}\n\n⚠️ Immediate clinic triage/callback required.",
+        "chatId": "={{ $('Clinic Config').first()?.json?.staff_chat_id || $('Edit Fields').first()?.json?.staff_chat_id }}",
+        "text": "=🚨 URGENT: Emergency Medical Call Detected!\n\n• Patient: {{ $('Information Extractor').first()?.json?.output?.patient_name || $('Information Extractor').first()?.json?.patient_name || 'Emergency Caller' }}\n• Phone: {{ $('Information Extractor').first()?.json?.output?.patient_phone || $('Information Extractor').first()?.json?.patient_phone || $('Vapi Post-Call Ingest').first()?.json?.message?.customer?.number }}\n• Symptoms / Complaint: {{ $('Information Extractor').first()?.json?.output?.chief_complaint || 'Severe acute symptoms reported' }}\n• Time: {{ $now.setZone('Asia/Kolkata').toFormat(\"cccc, MMMM dd, yyyy 'at' hh:mm a\") }}\n\n⚠️ Immediate clinic triage and callback required!",
         "additionalFields": {}
       },
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
       "position": [
-        784,
-        1008
+        976,
+        928
       ],
       "id": "8121ac81-c1f9-477e-a83b-4a5ebdfc13d5",
       "name": "Notify Staff Emergency",
@@ -563,8 +550,8 @@
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
       "position": [
-        2128,
-        1104
+        2320,
+        928
       ],
       "id": "4707dc2e-8ad2-4fb2-9466-32d42710d8bf",
       "name": "Update Booking (Confirmed)",
@@ -577,24 +564,28 @@
     },
     {
       "parameters": {
-        "tableId": "appointments",
+        "tableId": "triage_logs",
         "fieldsUi": {
           "fieldValues": [
             {
               "fieldId": "patient_phone",
-              "fieldValue": "={{ $('Information Extractor').first().json.patient_phone }}"
+              "fieldValue": "={{ $('Information Extractor').first().json.output?.caller_phone || $('Information Extractor').first().json.output?.patient_phone || $('Information Extractor').first().json.patient_phone || $('Vapi Post-Call Ingest').first().json.message?.customer?.number || '' }}\n```"
             },
             {
               "fieldId": "summary",
-              "fieldValue": "={{ $('Information Extractor').first().json.summary }}"
+              "fieldValue": "={{ $('Information Extractor').first().json.output?.summary || $('Information Extractor').first().json.summary || 'Reschedule requested for unregistered caller' }}"
             },
             {
               "fieldId": "requested_slot",
-              "fieldValue": "={{ $('Information Extractor').first().json.appointment_requested_time }}"
+              "fieldValue": "={{ $('Information Extractor').first().json.output?.appointment_start || $('Information Extractor').first().json.appointment_requested_time || '' }}\n```[cite: 1]"
             },
             {
               "fieldId": "status",
               "fieldValue": "reschedule_needed"
+            },
+            {
+              "fieldId": "patient_name",
+              "fieldValue": "={{ $('Information Extractor').first().json.output?.patient_name || $('Information Extractor').first().json.patient_name || $('Vapi Post-Call Ingest').first().json.message?.customer?.name || 'Unknown Patient' }} ```[cite: 1]"
             }
           ]
         }
@@ -602,8 +593,8 @@
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
       "position": [
-        1680,
-        1488
+        1648,
+        1216
       ],
       "id": "10df3aa2-6417-4cba-94de-0f260a2a9760",
       "name": "Supabase - Log Reschedule",
@@ -623,8 +614,8 @@
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
       "position": [
-        1904,
-        1536
+        1872,
+        1216
       ],
       "id": "2c52d127-f3ba-4e77-a5ab-6a16c55f5d40",
       "name": "Notify Patient - Reschedule",
@@ -645,8 +636,8 @@
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
       "position": [
-        1456,
-        1488
+        1424,
+        1216
       ],
       "id": "7979bf6a-ea62-457e-b82d-b760f7e65ef1",
       "name": "Notify Staff to Reschedule",
@@ -662,22 +653,21 @@
       "parameters": {
         "calendar": {
           "__rl": true,
-          "value": "8a68a602c4cc20fedd0b7e30e4b3402cbe48a92fbb6f34d06b5f6bc01f9ee66f@group.calendar.google.com",
-          "mode": "list",
-          "cachedResultName": "Clinic Appointments"
+          "value": "={{ $('Lookup Doctor').first().json[0]?.calendar_id || $('Lookup Doctor').first().json.calendar_id }}",
+          "mode": "id"
         },
-        "start": "={{ $('Triage Router').item.json.output.appointment_start }}",
-        "end": "={{ $('Triage Router').item.json.output.appointment_end }}",
+        "start": "={{ $('Information Extractor').first().json.output?.appointment_start || $('Information Extractor').first().json.appointment_start }}",
+        "end": "={{ $('Information Extractor').first().json.output?.appointment_end || $('Information Extractor').first().json.appointment_end }}",
         "additionalFields": {
-          "description": "=Complaint: {{ $('Triage Router').item.json.output.chief_complaint }} | Phone: {{ $('Triage Router').item.json.output.patient_phone }}",
-          "summary": "=Appointment: {{ $('Triage Router').item.json.output.patient_name }} - {{ $('Triage Router').item.json.output.doctor_name }}"
+          "description": "=Patient: {{ $('Information Extractor').first().json.output?.patient_name || $('Information Extractor').first().json.patient_name }}\nPhone: {{ $('Information Extractor').first().json.output?.patient_phone || $('Information Extractor').first().json.patient_phone || $('Vapi Post-Call Ingest').first().json.message?.customer?.number }}\nChief Complaint: {{ $('Information Extractor').first().json.output?.chief_complaint || $('Information Extractor').first().json.chief_complaint }}\nUrgency: {{ $('Information Extractor').first().json.output?.urgency || $('Information Extractor').first().json.urgency }}",
+          "summary": "=Appointment: {{ $('Information Extractor').first().json.output?.patient_name || $('Information Extractor').first().json.patient_name || 'Patient' }} with {{ $('Lookup Doctor').first().json[0]?.name || $('Lookup Doctor').first().json.name || 'Doctor' }}"
         }
       },
       "type": "n8n-nodes-base.googleCalendar",
       "typeVersion": 1.3,
       "position": [
-        1232,
-        1776
+        1200,
+        1408
       ],
       "id": "3de5ff69-128f-4295-8469-177316dd683b",
       "name": "Book Google Calendar Slot",
@@ -690,7 +680,9 @@
     },
     {
       "parameters": {
-        "url": "=https://optbmkbhrrzavrogmoyl.supabase.co/rest/v1/appointments?patient_phone=eq.{{ encodeURIComponent($('Information Extractor').first().json.output?.patient_phone || $('Information Extractor').first().json.patient_phone || '+15551234567') }}&status=in.(confirmed,rescheduled)&select=*&order=created_at.desc&limit=1",
+        "url": "=https://optbmkbhrrzavrogmoyl.supabase.co/rest/v1/appointments?patient_phone=eq.{{ encodeURIComponent($('Information Extractor').first().json.output?.patient_phone || $('Information Extractor').first().json.patient_phone || $('Vapi Post-Call Ingest').first().json.message?.customer?.number || '') }}&status=in.(confirmed,rescheduled)",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -700,7 +692,7 @@
             },
             {
               "name": "Authorization",
-              "value": "Bearer < YOUR_SECRET_API_KEY_HERE >"
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9wdGJta2JocnJ6YXZyb2dtb3lsIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODcwNDIxNSwiZXhwIjoyMTA0MjgwMjE1fQ.vPnw8r6iK8IIb7RUpdKSqeMHxcKxh9lvhWY9hDQfwI0"
             }
           ]
         },
@@ -711,41 +703,18 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        784,
-        2160
+        752,
+        1984
       ],
       "id": "23d2f72a-4f9a-4246-a753-14ef471919f5",
       "name": "Find Booking in Supabase",
-      "alwaysOutputData": true
-    },
-    {
-      "parameters": {
-        "operation": "delete",
-        "calendar": {
-          "__rl": true,
-          "value": "8a68a602c4cc20fedd0b7e30e4b3402cbe48a92fbb6f34d06b5f6bc01f9ee66f@group.calendar.google.com",
-          "mode": "list",
-          "cachedResultName": "Clinic Appointments"
-        },
-        "eventId": "={{ ($json.calendar_event_id || $('Find Booking in Supabase').first().json.calendar_event_id || '').trim() }}",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.googleCalendar",
-      "typeVersion": 1.3,
-      "position": [
-        1232,
-        1968
-      ],
-      "id": "41e6d39c-730f-4dd0-8a25-7370ccd7fac6",
-      "name": "Google Calendar: Delete Event",
-      "alwaysOutputData": false,
+      "alwaysOutputData": true,
       "credentials": {
-        "googleCalendarOAuth2Api": {
-          "id": "nHI98rSemdX3Pxog",
-          "name": "Google Calendar account 2"
+        "httpHeaderAuth": {
+          "id": "ENRUnHVlJJmOx0ml",
+          "name": "Header Auth account"
         }
-      },
-      "onError": "continueRegularOutput"
+      }
     },
     {
       "parameters": {
@@ -756,7 +725,7 @@
             {
               "keyName": "id",
               "condition": "eq",
-              "keyValue": "={{ $('Find Booking in Supabase').first().json.id || $('Find Booking in Supabase').first().json[0]?.id }}"
+              "keyValue": "={{ $('Find Booking in Supabase').first().json?.id || $('Find Booking in Supabase').first().json[0]?.id || $json.id }}"
             }
           ]
         },
@@ -765,9 +734,6 @@
             {
               "fieldId": "status",
               "fieldValue": "=cancelled"
-            },
-            {
-              "fieldId": "calendar_event_id"
             }
           ]
         }
@@ -775,8 +741,8 @@
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
       "position": [
-        1456,
-        1968
+        1424,
+        1792
       ],
       "id": "3c74d375-8f6a-49de-9192-631cbe5b95d3",
       "name": "Update Booking Status (Cancelled)",
@@ -789,18 +755,18 @@
     },
     {
       "parameters": {
-        "text": "={{ $('Parse Telegram Input').first().json.transcript || $json.transcript || \"\" }}",
+        "text": "={{ $('Format Ingest Payload').first().json.transcript || $json.transcript || \"\" }}",
         "schemaType": "manual",
-        "inputSchema": "{\n  \"$schema\": \"http://json-schema.org/draft-07/schema#\",\n  \"type\": \"object\",\n  \"properties\": {\n    \"patient_intent\": {\n      \"type\": \"string\",\n      \"enum\": [\"book_appointment\", \"reschedule\", \"cancel\", \"emergency\"],\n      \"description\": \"Primary clinical intent of the call.\"\n    },\n    \"urgency\": {\n      \"type\": \"string\",\n      \"enum\": [\"standard\", \"emergency\"],\n      \"description\": \"Strictly set to 'emergency' if acute symptoms are reported. Otherwise 'standard'.\"\n    },\n    \"patient_name\": {\n      \"type\": \"string\",\n      \"description\": \"Full name of the patient mentioned in the transcript. If not stated, return an empty string.\"\n    },\n    \"patient_phone\": {\n      \"type\": [\"string\", \"null\"],\n      \"description\": \"Caller phone number if explicitly spoken in audio, normalized to E.164. Otherwise null.\"\n    },\n    \"doctor_name\": {\n      \"type\": [\"string\", \"null\"],\n      \"description\": \"Requested practitioner name if specified. Otherwise null.\"\n    },\n    \"appointment_start\": {\n      \"type\": [\"string\", \"null\"],\n      \"description\": \"Target appointment start timestamp in ISO 8601 format. Otherwise null.\"\n    },\n    \"appointment_end\": {\n      \"type\": [\"string\", \"null\"],\n      \"description\": \"Target appointment end timestamp in ISO 8601 format. Otherwise null.\"\n    },\n    \"chief_complaint\": {\n      \"type\": [\"string\", \"null\"],\n      \"description\": \"Summary of symptoms or reason for the call. Otherwise null.\"\n    }\n  },\n  \"required\": [\"patient_intent\", \"urgency\", \"patient_name\"]\n}",
+        "inputSchema": "{\n  \"$schema\": \"http://json-schema.org/draft-07/schema#\",\n  \"type\": \"object\",\n  \"properties\": {\n    \"patient_intent\": {\n      \"type\": \"string\",\n      \"enum\": [\"book_appointment\", \"reschedule\", \"cancel\", \"emergency\"],\n      \"description\": \"Primary clinical intent of the call.\"\n    },\n    \"urgency\": {\n      \"type\": \"string\",\n      \"enum\": [\"standard\", \"emergency\"],\n      \"description\": \"Strictly set to 'emergency' if acute symptoms are reported. Otherwise 'standard'.\"\n    },\n    \"specialty\": {\n      \"type\": \"string\",\n      \"enum\": [\"General Medicine\", \"ENT\", \"Dentistry\", \"Pulmonology\"],\n      \"description\": \"Clinical department mapped from symptoms: 'Dentistry' for tooth/gum issues; 'ENT' for ear, nose, throat; 'Pulmonology' for chest/asthma issues; 'General Medicine' for stomach ache, fever, cough, checkups, or unspecified issues.\"\n    },\n    \"patient_name\": {\n      \"type\": \"string\",\n      \"description\": \"Full name of the patient mentioned in the transcript. If not stated, return an empty string.\"\n    },\n    \"patient_phone\": {\n      \"type\": [\"string\", \"null\"],\n      \"description\": \"Caller phone number if explicitly spoken in audio, normalized to E.164. Otherwise null.\"\n    },\n    \"doctor_name\": {\n      \"type\": [\"string\", \"null\"],\n      \"description\": \"Requested practitioner name if specified. Otherwise null.\"\n    },\n    \"appointment_start\": {\n      \"type\": [\"string\", \"null\"],\n      \"description\": \"Target appointment start timestamp in ISO 8601 format. Otherwise null.\"\n    },\n    \"appointment_end\": {\n      \"type\": [\"string\", \"null\"],\n      \"description\": \"Target appointment end timestamp in ISO 8601 format. Otherwise null.\"\n    },\n    \"chief_complaint\": {\n      \"type\": [\"string\", \"null\"],\n      \"description\": \"Summary of symptoms or reason for the call. Otherwise null.\"\n    }\n  },\n  \"required\": [\"patient_intent\", \"urgency\", \"specialty\", \"patient_name\"]\n}",
         "options": {
-          "systemPromptTemplate": "=You are a clinical triage assistant for a medical clinic.\nExtract information strictly according to the defined schema.\n\nContext:\n- Current Timestamp: {{ $now.setZone('Asia/Kolkata').toISO() }}\n- Timezone: Asia/Kolkata (UTC+05:30)\n- Default Appointment Duration: 30 minutes\n\nTriage Rules:\n1. ALWAYS evaluate 'urgency' first.\n2. If the patient reports acute/crushing chest pain, numbness in arm, severe breathing difficulty, sudden collapse, stroke signs, or severe bleeding:\n   - Set \"urgency\": \"emergency\"\n   - Set \"patient_intent\": \"emergency\"\n   (Emergency clinical triage strictly overrides any mention of appointments or doctors).\n3. If the caller asks to drop, call off, or remove an existing appointment, set \"patient_intent\": \"cancel\".\n4. If the caller asks to change, move, or postpone an existing appointment, set \"patient_intent\": \"reschedule\".\n5. If the caller wants to schedule a new visit, set \"patient_intent\": \"book_appointment\".\n6. Resolve all relative date/time expressions (e.g., \"tomorrow at 4 PM\", \"next Monday morning\") into exact ISO 8601 strings based on the Current Timestamp.\n7. Extract only facts stated by the user. Do not invent details."
+          "systemPromptTemplate": "=You are a clinical triage assistant for a medical clinic.\nExtract information strictly according to the defined schema.\n\nContext:\n- Current Timestamp: {{ $now.setZone('Asia/Kolkata').toISO() }}\n- Timezone: Asia/Kolkata (UTC+05:30)\n- Default Appointment Duration: 30 minutes\n\nTriage Rules:\n1. ALWAYS evaluate 'urgency' first.\n2. If the patient reports acute/crushing chest pain, numbness in arm, severe breathing difficulty, sudden collapse, stroke signs, or severe bleeding:\n   - Set \"urgency\": \"emergency\"\n   - Set \"patient_intent\": \"emergency\"\n   (Emergency clinical triage strictly overrides any mention of appointments or doctors).\n3. If the caller asks to drop, call off, or remove an existing appointment, set \"patient_intent\": \"cancel\".\n4. If the caller asks to change, move, or postpone an existing appointment, set \"patient_intent\": \"reschedule\".\n5. If the caller wants to schedule a new visit, set \"patient_intent\": \"book_appointment\".\n6. Resolve all relative date/time expressions (e.g., \"tomorrow at 4 PM\", \"next Monday morning\") into exact ISO 8601 strings based on the Current Timestamp.\n7. Medical Specialty Assignment:\n   - \"Dentistry\": toothache, aching tooth, dental cavities, gum bleeding/swelling, tooth extraction.\n   - \"ENT\": ear ache, ear discharge, hearing issues, sinus pain, nasal congestion, sore throat, tonsils.\n   - \"Pulmonology\": asthma, chronic wheezing, persistent chest tightness (non-acute).\n   - \"General Medicine\": stomach ache, abdominal cramps, fever, cold/flu, general health checkup, routine consultation, or any unspecified symptom.\n8. Extract only facts stated by the user. Do not invent details.\n9. Phone Number Formatting:\n   - Always normalize Indian phone numbers to standard E.164 format starting with '+91'.\n   - If a 10-digit number is spoken (e.g. \"9830127501\" or \"98XXXXXXXX\"), automatically prepend '+91' so it outputs as '+919830127501'."
         }
       },
       "type": "@n8n/n8n-nodes-langchain.informationExtractor",
       "typeVersion": 1.2,
       "position": [
-        208,
-        1440
+        -48,
+        1312
       ],
       "id": "104be467-318d-463a-80d8-7eec7058d2de",
       "name": "Information Extractor",
@@ -809,15 +775,410 @@
     },
     {
       "parameters": {
-        "operation": "getAll",
-        "tableId": "patients",
-        "matchType": "allFilters",
-        "filters": {
+        "chatId": "={{ $('Clinic Config').first().json.staff_chat_id }}",
+        "text": "=❌ Appointment Cancelled\n\n👤 Patient: {{ $('Find Booking in Supabase').first().json?.patient_name || $('Find Booking in Supabase').first().json[0]?.patient_name || $('Information Extractor').first().json.output?.patient_name || 'Patient' }}\n📞 Phone: {{ $('Find Booking in Supabase').first().json?.patient_phone || $('Find Booking in Supabase').first().json[0]?.patient_phone || $('Vapi Post-Call Ingest').first().json.message?.customer?.number || 'N/A' }}\n🗓️ Cancelled Slot: {{ DateTime.fromISO($('Find Booking in Supabase').first().json?.appointment_start || $('Find Booking in Supabase').first().json[0]?.appointment_start).setZone('Asia/Kolkata').toFormat('dd LLL yyyy, hh:mm a') }}\n👨‍⚕️ Doctor: {{ $('Lookup Doctor').first().json[0]?.doctor_name || $('Lookup Doctor').first().json?.doctor_name || 'Clinic Doctor' }}\n\nStatus: Google Calendar event removed and Supabase appointment marked as cancelled.",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1648,
+        1792
+      ],
+      "id": "c8338c7f-606a-4516-a503-f64fe524b709",
+      "name": "Telegram Clinic Alert",
+      "webhookId": "a3f00f48-7216-4ad6-9913-0e52fdc4abcd",
+      "retryOnFail": true,
+      "executeOnce": true,
+      "credentials": {
+        "telegramApi": {
+          "id": "j8qR3zWSCvlrrdMD",
+          "name": "Telegram account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chat?.id || $json.chat_id || $json.id || $('Find Booking in Supabase').first()?.json?.chat_id || $('Find Booking in Supabase').first()?.json?.[0]?.chat_id || $('Find Booking in Supabase').first()?.json?.telegram_chat_id || $('Clinic Config').first().json.staff_chat_id }}",
+        "text": "=Hello {{ $('Find Booking in Supabase').first().json?.patient_name || $('Find Booking in Supabase').first().json[0]?.patient_name || 'Valued Patient' }},\n\nYour appointment scheduled for {{ DateTime.fromISO($('Find Booking in Supabase').first().json?.appointment_start || $('Find Booking in Supabase').first().json[0]?.appointment_start).setZone('Asia/Kolkata').toFormat('dd LLL yyyy, hh:mm a') }} has been successfully cancelled.\n\nIf you ever need to reschedule or book a new consultation, feel free to call our clinic desk anytime.\n\nWarm regards,\nClinic Care Team",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1872,
+        1792
+      ],
+      "id": "cc0adc7b-2c2f-4015-bfbb-6435eed6d3a0",
+      "name": "Patient Cancellation Confirmation",
+      "webhookId": "9a52f491-d1ac-48b5-b06c-e38d67149d56",
+      "credentials": {
+        "telegramApi": {
+          "id": "j8qR3zWSCvlrrdMD",
+          "name": "Telegram account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
           "conditions": [
             {
-              "keyName": "patient_phone",
-              "condition": "eq",
-              "keyValue": "={{ $('Triage Router').item.json.output.patient_phone }}"
+              "id": "cf45f21a-2f06-4ab1-8626-eacc43095cc3",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "boolean",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        976,
+        1984
+      ],
+      "id": "6aa84a7c-a360-42c6-a0bf-1bd765b02cd2",
+      "name": "If (Booking Found? - Cancel)"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Clinic Config').first().json.staff_chat_id }}",
+        "text": "=⚠️ Cancellation Alert: No Active Booking Found\n\n👤 Patient/Caller: {{ $json.patient_name }}\n📞 Phone: {{ $json.patient_phone }}\n🗓️ Mentioned Slot: {{ $json.requested_date && $json.requested_date !== 'N/A' ? DateTime.fromISO($json.requested_date).setZone('Asia/Kolkata').toFormat('dd LLL yyyy, hh:mm a') : 'Not specified' }}\n⚠️ Status: Caller requested to cancel an appointment, but no active/confirmed booking was found under this phone number in Supabase.\n\nAction Required: Please check if the booking is registered under an alternate phone number or contact the caller directly.",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1424,
+        1984
+      ],
+      "id": "1963c025-52fc-45e4-9a3b-937193315a95",
+      "name": "Notify Staff - Cancel Failed",
+      "webhookId": "409f07d5-00da-42b3-b499-49629dcf44a5",
+      "credentials": {
+        "telegramApi": {
+          "id": "j8qR3zWSCvlrrdMD",
+          "name": "Telegram account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Find Booking in Supabase').first()?.json?.telegram_chat_id || $('Information Extractor').first()?.json?.output?.telegram_chat_id || $('Information Extractor').first()?.json?.telegram_chat_id || 8819045433 }}",
+        "text": "=Hello {{ $json.patient_name || 'Valued Patient' }},\n\nWe received your request to cancel an appointment. However, our system could not locate an active upcoming booking under your phone number ({{ $json.patient_phone }}).\n\nIf you believe this is an error or would like to verify your booking details, please contact the clinic front desk directly.\n\nThank you,\nClinic Care Team",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1424,
+        2176
+      ],
+      "id": "b2e67141-39f0-45d7-8a6c-a7b5b58f821f",
+      "name": "Notify Patient - Cancel Failed",
+      "webhookId": "420c3e91-a6be-4af6-91d5-cb420f1e282f",
+      "credentials": {
+        "telegramApi": {
+          "id": "j8qR3zWSCvlrrdMD",
+          "name": "Telegram account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "let patientName = 'Valued Patient';\nlet patientPhone = 'Unknown Phone';\nlet callId = null;\nlet requestedDate = 'N/A';\n\ntry {\n  const vapiData = $('Vapi Post-Call Ingest').first().json || {};\n  const extractorNode = $('Information Extractor').first()?.json || {};\n  const extracted = extractorNode.output || extractorNode;\n\n  // 1. Structured patient name with multi-level fallback\n  if (extracted.patient_name && String(extracted.patient_name).trim() !== '') {\n    patientName = String(extracted.patient_name).trim();\n  } else if (vapiData.message?.customer?.name) {\n    patientName = vapiData.message.customer.name;\n  }\n\n  // 2. Patient phone with full defensive chaining\n  patientPhone = extracted.patient_phone \n              || extracted.caller_phone \n              || extracted.phone \n              || vapiData.message?.call?.customer?.number \n              || vapiData.message?.customer?.number \n              || vapiData.customer?.number \n              || patientPhone;\n\n  // 3. Call ID & appointment start reference if available\n  callId = vapiData.message?.call?.id || vapiData.message?.callId || null;\n  if (extracted.appointment_start) {\n    requestedDate = extracted.appointment_start;\n  }\n} catch (error) {\n  // Safe defaults persist if node context is unlinked during partial manual test runs\n}\n\nreturn [{\n  json: {\n    patient_name: patientName,\n    patient_phone: patientPhone,\n    requested_date: requestedDate,\n    reason: 'Active booking not found in database',\n    call_id: callId\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        2080
+      ],
+      "id": "5d9b23fc-1745-49a2-a225-ccc2ed30afa3",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "jsCode": "let patientName = 'Valued Patient';\nlet patientPhone = 'Unknown Phone';\nlet callId = null;\n\ntry {\n  const vapiData = $('Vapi Post-Call Ingest').first().json;\n  const extracted = $('Information Extractor').first()?.json || {};\n\n  // 1. Retrieve structured patient name from LLM extractor, fallback to default\n  if (extracted.patient_name && extracted.patient_name.trim() !== '') {\n    patientName = extracted.patient_name.trim();\n  }\n\n  // 2. Retrieve patient phone: LLM extractor -> Vapi metadata -> default fallback\n  patientPhone = extracted.patient_phone \n              || vapiData.message?.call?.customer?.number \n              || vapiData.customer?.number \n              || patientPhone;\n\n  callId = vapiData.message?.call?.id || null;\n} catch (error) {\n  // Safe defaults persist if node context is unlinked during partial manual test runs\n}\n\nreturn [{\n  json: {\n    patient_name: patientName,\n    patient_phone: patientPhone,\n    reason: 'Booking not found to reschedule',\n    call_id: callId\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        1216
+      ],
+      "id": "69f2b401-b2ca-46fe-b9f9-a7e0a39d87a8",
+      "name": "Format Reschedule Fallback"
+    },
+    {
+      "parameters": {
+        "url": "=https://optbmkbhrrzavrogmoyl.supabase.co/rest/v1/appointments",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "order",
+              "value": "created_at.desc"
+            },
+            {
+              "name": "limit",
+              "value": "1"
+            },
+            {
+              "name": "patient_phone",
+              "value": "={{ 'eq.+' + (String($('Clinic Config').first()?.json?.patient_phone || $('Clinic Config').first()?.json?.caller_phone || $('Information Extractor').first()?.json?.output?.patient_phone || $('Vapi Post-Call Ingest').first()?.json?.message?.customer?.number || '919830127501').replace(/\\D/g, '').replace(/^91(?=\\d{10}$)/, '91').replace(/^(\\d{10})$/, '91$1')) }}"
+            },
+            {
+              "name": "status",
+              "value": "in.(confirmed,rescheduled)"
+            },
+            {
+              "name": "select",
+              "value": "*,patients!appointments_patient_id_fkey(*),doctors(*)"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "< YOUR_SECRET_API_KEY_HERE >"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9wdGJta2JocnJ6YXZyb2dtb3lsIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODcwNDIxNSwiZXhwIjoyMTA0MjgwMjE1fQ.vPnw8r6iK8IIb7RUpdKSqeMHxcKxh9lvhWY9hDQfwI0"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        752,
+        1120
+      ],
+      "id": "6745e2fd-d750-48fb-98ac-c8883d0b23ef",
+      "name": "Find Booking to Reschedule",
+      "alwaysOutputData": true,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "ENRUnHVlJJmOx0ml",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.5-flash-lite",
+        "options": {
+          "temperature": 0
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        32,
+        1552
+      ],
+      "id": "bd140cde-b195-4150-b858-1ddad19b117f",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "lxaGWo2tt1Qr0tT7",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "8819045433",
+        "text": "=Hello {{ $('Information Extractor').item.json.output.patient_name }}\n\nWe received your request to reschedule your appointment. However, our system could not complete the reschedule because the requested time slot is unavailable.\n\nIf you would like to choose another date/time or speak with our team, please contact the clinic front desk directly.\n\nThank you,\nClinic Care Team",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2544,
+        1120
+      ],
+      "id": "9ee3695d-e862-41a8-9a56-b0b215425b80",
+      "name": "Notify Patient - Reschedule Slot Not Free",
+      "webhookId": "420c3e91-a6be-4af6-91d5-cb420f1e282f",
+      "credentials": {
+        "telegramApi": {
+          "id": "j8qR3zWSCvlrrdMD",
+          "name": "Telegram account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "=https://optbmkbhrrzavrogmoyl.supabase.co/rest/v1/doctors?name=ilike.*{{ encodeURIComponent($('Information Extractor').first().json.output?.doctor_name || $('Information Extractor').first().json.doctor_name || 'Dr. Smith').trim() }}*",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9wdGJta2JocnJ6YXZyb2dtb3lsIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODcwNDIxNSwiZXhwIjoyMTA0MjgwMjE1fQ.vPnw8r6iK8IIb7RUpdKSqeMHxcKxh9lvhWY9hDQfwI0"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        304,
+        1312
+      ],
+      "id": "969f7cf0-8039-4bea-8f60-9333c4f3ce58",
+      "name": "Lookup Doctor",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "ENRUnHVlJJmOx0ml",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "calendar": {
+          "__rl": true,
+          "value": "={{ $('Lookup Doctor').first().json[0]?.calendar_id || $('Lookup Doctor').first().json.calendar_id }}",
+          "mode": "id"
+        },
+        "limit": 10,
+        "timeMin": "={{ DateTime.fromISO($('Information Extractor').first().json.output?.appointment_start || $('Information Extractor').first().json.appointment_start).minus({ minutes: 1 }).toISO() }}",
+        "timeMax": "={{ DateTime.fromISO($('Information Extractor').first().json.output?.appointment_end || $('Information Extractor').first().json.appointment_end).plus({ minutes: 1 }).toISO() }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        752,
+        1504
+      ],
+      "id": "a4fe6503-cb1a-4e1e-8ed4-080ded74d5df",
+      "name": "Check Calendar Slot",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "nHI98rSemdX3Pxog",
+          "name": "Google Calendar account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Bulletproof VAPI & Telephony Call Ingest Normalizer\nconst items = $input.all();\nif (!items.length) return [];\n\nconst item = items[0].json;\nconst raw = item.body || item;\n\n// 1. Safe extraction of VAPI transcript\nlet transcript = \n  raw.message?.artifact?.transcript ||\n  raw.message?.transcript ||\n  raw.artifact?.transcript ||\n  raw.transcript ||\n  raw.message?.text ||\n  raw.message?.call?.transcript ||\n  raw.message ||\n  raw.chatInput ||\n  raw.text ||\n  '';\n\n// Force transcript to be a clean string safely\nif (typeof transcript !== 'string') {\n  try {\n    transcript = JSON.stringify(transcript) || '';\n  } catch (e) {\n    transcript = String(transcript || '');\n  }\n}\ntranscript = transcript.trim();\n\n// 2. Extract Caller / Patient Phone Number\nlet incomingPhone = \n  raw.message?.call?.customer?.number ||\n  raw.call?.customer?.number ||\n  raw.customer?.number ||\n  raw.message?.customer?.number ||\n  raw.patient_phone ||\n  raw.phone ||\n  raw.caller_id ||\n  raw.From ||\n  null;\n\nif (incomingPhone && typeof incomingPhone === 'string') {\n  incomingPhone = incomingPhone.trim();\n}\n\nreturn [{\n  json: {\n    transcript: transcript,\n    patient_phone: incomingPhone,\n    incoming_phone: incomingPhone,\n    received_at: new Date().toISOString(),\n    vapi_call_id: raw.message?.call?.id || raw.call?.id || null\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -272,
+        1312
+      ],
+      "id": "00af0a2b-a2cc-4014-b047-d06eb6310e9d",
+      "name": "Format Ingest Payload"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://optbmkbhrrzavrogmoyl.supabase.co/rest/v1/patients?on_conflict=patient_phone",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9wdGJta2JocnJ6YXZyb2dtb3lsIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODcwNDIxNSwiZXhwIjoyMTA0MjgwMjE1fQ.vPnw8r6iK8IIb7RUpdKSqeMHxcKxh9lvhWY9hDQfwI0"
+            },
+            {
+              "name": "Prefer",
+              "value": "resolution=merge-duplicates,return=representation"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "=[\n  {\n    \"patient_phone\": \"{{ (() => { let digits = String($('Information Extractor').first().json.output?.patient_phone || $('Information Extractor').first().json.patient_phone || $('Vapi Post-Call Ingest').first().json.message?.customer?.number || '').replace(/\\D/g, ''); if (digits.length === 10) return '+91' + digits; if (digits.startsWith('91')) return '+' + digits; return digits ? '+' + digits : ''; })() }}\",\n    \"patient_name\": \"{{ $('Information Extractor').first().json.output?.patient_name || $('Information Extractor').first().json.patient_name || 'Patient' }}\"\n  }\n]",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1424,
+        1408
+      ],
+      "id": "38e77973-5400-45e9-91d7-c8481b1f04fc",
+      "name": "HTTP Request",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "ENRUnHVlJJmOx0ml",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "tableId": "triage_logs",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "status",
+              "fieldValue": "reschedule_conflict"
+            },
+            {
+              "fieldId": "calendar_event_id",
+              "fieldValue": "={{ $json.id }}"
+            },
+            {
+              "fieldId": "patient_phone",
+              "fieldValue": "={{ $('Information Extractor').first().json.output?.patient_phone || $('Information Extractor').first().json.patient_phone || $('Vapi Post-Call Ingest').first().json.message?.customer?.number || '' }} ```[cite: 3]"
+            },
+            {
+              "fieldId": "patient_name",
+              "fieldValue": "={{ $('Information Extractor').first().json.output?.patient_name || $('Information Extractor').first().json.patient_name || $('Vapi Post-Call Ingest').first().json.message?.customer?.name || 'Unknown Patient' }} ```[cite: 3]"
+            },
+            {
+              "fieldId": "summary",
+              "fieldValue": "New booking request conflict: requested slot unavailable."
+            },
+            {
+              "fieldId": "requested_slot",
+              "fieldValue": "={{ $('Information Extractor').first().json.output?.appointment_start || $('Information Extractor').first().json.appointment_requested_time || '' }} ```[cite: 3]"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "booking_conflict"
             }
           ]
         }
@@ -825,11 +1186,11 @@
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
       "position": [
-        1456,
-        1776
+        1200,
+        1600
       ],
-      "id": "8fae4d10-913d-409e-9e77-69b9399e5078",
-      "name": "Upsert Patient",
+      "id": "0ca79d8d-f7df-4598-b0e8-6e5ddebacbde",
+      "name": "Supabase - Log New Booking Conflict",
       "alwaysOutputData": true,
       "credentials": {
         "supabaseApi": {
@@ -840,92 +1201,22 @@
     },
     {
       "parameters": {
-        "tableId": "appointments",
-        "fieldsUi": {
-          "fieldValues": [
-            {
-              "fieldId": "patient_id",
-              "fieldValue": "={{ $('Upsert Patient').first().json.id }}"
-            },
-            {
-              "fieldId": "doctor_name",
-              "fieldValue": "={{ $('Triage Router').item.json.output.doctor_name }}"
-            },
-            {
-              "fieldId": "appointment_start",
-              "fieldValue": "={{ $('Triage Router').item.json.output.appointment_start }}"
-            },
-            {
-              "fieldId": "appointment_end",
-              "fieldValue": "={{ $('Triage Router').item.json.output.appointment_end }}"
-            },
-            {
-              "fieldId": "chief_complaint",
-              "fieldValue": "={{ $('Information Extractor').item.json.chief_complaint }}"
-            },
-            {
-              "fieldId": "calendar_event_id",
-              "fieldValue": "={{ $('Book Google Calendar Slot').item.json.id }}"
-            },
-            {
-              "fieldId": "status",
-              "fieldValue": "confirmed"
-            },
-            {
-              "fieldId": "patient_phone",
-              "fieldValue": "={{ $('Parse Telegram Input').first().json.incoming_phone || $('Edit Fields').first().json.message.call.customer.number }}"
-            },
-            {
-              "fieldId": "summary",
-              "fieldValue": "={{ $('Information Extractor').first().json.chief_complaint || $('Information Extractor').first().json.output?.chief_complaint || 'Routine general checkup' }}"
-            }
-          ]
+        "chatId": "=8687974473",
+        "text": "=⚠️ Booking Conflict Detected!\n\n👤 Patient: {{ $('Information Extractor').first()?.json?.output?.patient_name || $('Information Extractor').first()?.json?.patient_name || $('Find Booking to Reschedule').first()?.json?.patient_name || 'Patient' }}\n📞 Phone: {{ $('Information Extractor').first()?.json?.output?.patient_phone || $('Information Extractor').first()?.json?.patient_phone || $('Find Booking to Reschedule').first()?.json?.patient_phone || $('Find Booking to Reschedule').first()?.json?.phone || $('Vapi Post-Call Ingest').first()?.json?.message?.customer?.number || 'N/A' }}\n🗓️ Requested Slot: {{ $('Information Extractor').first()?.json?.output?.appointment_start ? DateTime.fromISO($('Information Extractor').first().json.output.appointment_start).setZone('Asia/Kolkata').toFormat('dd LLL yyyy, hh:mm a') : ($('Information Extractor').first()?.json?.appointment_start ? DateTime.fromISO($('Information Extractor').first().json.appointment_start).setZone('Asia/Kolkata').toFormat('dd LLL yyyy, hh:mm a') : ($('Prepare Slot Dates').first()?.json?.slot_start ? DateTime.fromISO($('Prepare Slot Dates').first().json.slot_start).setZone('Asia/Kolkata').toFormat('dd LLL yyyy, hh:mm a') : 'N/A')) }}\n🩺 Reason: {{ $('Information Extractor').first()?.json?.output?.chief_complaint || $('Information Extractor').first()?.json?.chief_complaint || $('Information Extractor').first()?.json?.reason || $('Find Booking to Reschedule').first()?.json?.reason_for_visit || 'Appointment Request' }}\n\nStatus: Slot is already occupied on Clinic Appointments calendar. Please call the patient to reschedule.",
+        "additionalFields": {
+          "appendAttribution": false
         }
-      },
-      "type": "n8n-nodes-base.supabase",
-      "typeVersion": 1,
-      "position": [
-        1680,
-        1776
-      ],
-      "id": "4e18c613-b46e-4a35-b11f-685439719c59",
-      "name": "Insert Appointment\"",
-      "credentials": {
-        "supabaseApi": {
-          "id": "ZkIgYlLYiPcNzovJ",
-          "name": "Supabase account 2"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "includeOtherFields": true,
-        "options": {}
-      },
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.5,
-      "position": [
-        -240,
-        1440
-      ],
-      "id": "9866345f-54cc-4c2c-929f-13122036c669",
-      "name": "Edit Fields"
-    },
-    {
-      "parameters": {
-        "chatId": "8687974473",
-        "text": "=🚨 *Appointment Cancelled*\n\n👤 *Patient:* {{ $('Information Extractor').first().json.patient_name || $('Information Extractor').first().json.output?.patient_name || $('Find Booking in Supabase').first().json.summary || 'Patient' }}\n📞 *Phone:* {{ $('Find Booking in Supabase').first().json.patient_phone || $('Parse Telegram Input').first().json.incoming_phone || 'N/A' }}\n👨‍⚕️ *Doctor:* {{ $('Find Booking in Supabase').first().json.doctor_name || $('Information Extractor').first().json.output?.doctor_name || 'Dr. Smith' }}\n📅 *Original Slot:* {{ $('Find Booking in Supabase').first().json.appointment_start ? new Date($('Find Booking in Supabase').first().json.appointment_start).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }) : 'N/A' }}\n🗑 *Calendar Status:* Removed\n🆔 *Booking ID:* #{{ $('Find Booking in Supabase').first().json.id }}",
-        "additionalFields": {}
       },
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
       "position": [
-        1680,
-        1968
+        1648,
+        1600
       ],
-      "id": "c8338c7f-606a-4516-a503-f64fe524b709",
-      "name": "Telegram Clinic Alert",
-      "webhookId": "a3f00f48-7216-4ad6-9913-0e52fdc4abcd",
+      "id": "c49265e2-8830-4c77-90b8-041d70fca41c",
+      "name": "Notify Staff - Booking Conflict",
+      "webhookId": "4840ee30-2d39-4894-839b-0748f2247aea",
+      "executeOnce": true,
       "credentials": {
         "telegramApi": {
           "id": "j8qR3zWSCvlrrdMD",
@@ -935,19 +1226,19 @@
     },
     {
       "parameters": {
-        "chatId": "=8819045433",
-        "text": "=✅ *Appointment Cancellation Confirmed*\n\nDear {{ $('Information Extractor').first().json.patient_name || 'Patient' }},\nYour appointment with *{{ $('Find Booking in Supabase').first().json.doctor_name || 'Dr. Smith' }}* on *{{ $('Find Booking in Supabase').first().json.appointment_start ? new Date($('Find Booking in Supabase').first().json.appointment_start).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }) : 'your scheduled date' }}* has been successfully cancelled.\n\nIf you wish to reschedule, feel free to call us back or send a message anytime.",
+        "chatId": "={{ $('Find Patient Details').first().json[0]?.telegram_chat_id || $('Find Patient Details').first().json.telegram_chat_id }}",
+        "text": "=Hello {{ $('Information Extractor').first().json.output?.patient_name || $('Information Extractor').first().json.patient_name || 'there' }},\n\n{{ ($('Find Patient Details').first().json[0]?.id || $('Find Patient Details').first().json.id) ? \"We received your booking request for \" + (DateTime.fromISO($('Information Extractor').first().json.output?.appointment_start || $('Information Extractor').first().json.appointment_start).setZone('Asia/Kolkata').toFormat('dd LLL yyyy, hh:mm a')) + \".\\n\\nGood news — you already have a confirmed appointment with the doctor at that exact time! There is no need to rebook.\\n\\nWe look forward to seeing you at our clinic.\" : \"We received your booking request for \" + (DateTime.fromISO($('Information Extractor').first().json.output?.appointment_start || $('Information Extractor').first().json.appointment_start).setZone('Asia/Kolkata').toFormat('dd LLL yyyy, hh:mm a')) + \", but that slot is currently occupied.\\n\\nOur clinic team will reach out to you shortly to help arrange an alternative time.\" }}\n```[cite: 1]\n\n---\n\n### Why this turns GREEN immediately:\n1. **Valid n8n Syntax:** It avoids JavaScript block statements (`{ return ... }`) and IIFE closures that break the UI parser, relying instead on a clean inline ternary operator (`condition ? \"text A\" : \"text B\"`).\n2. **Safe Fallbacks:** It uses the same fallback chains (`output?.patient_name || patient_name`) and date formatters (`DateTime.fromISO(...).setZone('Asia/Kolkata')`) proven across your existing templates[cite: 1].\n3. **Dynamic Logic:** If `Find Patient Details` returns an existing record for the caller, it outputs the reassurance message. If no existing patient matches, it sends the polite slot-occupied message.",
         "additionalFields": {}
       },
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
       "position": [
-        1904,
-        1968
+        2096,
+        1600
       ],
-      "id": "cc0adc7b-2c2f-4015-bfbb-6435eed6d3a0",
-      "name": "Patient Cancellation Confirmation",
-      "webhookId": "9a52f491-d1ac-48b5-b06c-e38d67149d56",
+      "id": "bd59e94e-ca49-490c-82de-0b74062241fa",
+      "name": "Notify Patient - Slot Unavailable",
+      "webhookId": "420c3e91-a6be-4af6-91d5-cb420f1e282f",
       "credentials": {
         "telegramApi": {
           "id": "j8qR3zWSCvlrrdMD",
@@ -966,12 +1257,13 @@
           },
           "conditions": [
             {
-              "id": "cf45f21a-2f06-4ab1-8626-eacc43095cc3",
-              "leftValue": "={{ $json.id }}",
-              "rightValue": 0,
+              "id": "647a94a8-e23a-4e8d-9d07-c26230a841e9",
+              "leftValue": "={{ ($json.telegram_chat_id || $json[0]?.telegram_chat_id || $('Find Patient Details').first().json[0]?.telegram_chat_id || $('Find Patient Details').first().json.telegram_chat_id || '').toString() }}",
+              "rightValue": "",
               "operator": {
-                "type": "number",
-                "operation": "equals"
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
               }
             }
           ],
@@ -982,98 +1274,237 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        1008,
-        2160
+        1872,
+        1600
       ],
-      "id": "6aa84a7c-a360-42c6-a0bf-1bd765b02cd2",
-      "name": "If (Booking Found? - Cancel)"
+      "id": "370b60b3-0f24-4f02-a154-6d3023db5c53",
+      "name": "If (Patient Destination Exists?1"
     },
     {
       "parameters": {
-        "chatId": "8687974473",
-        "text": "=⚠️ *Clinic Action Alert: Cancellation Failed*\n\n• *Patient / Caller:* {{ $json.patient_name }}\n• *Phone:* {{ $json.patient_phone }}\n• *Issue:* No active (confirmed/rescheduled) booking found in Supabase to cancel.\n• *Status:* Call logged, no calendar event deleted.\n• *Action Required:* Front desk staff manual check / patient outreach required.",
-        "additionalFields": {}
-      },
-      "type": "n8n-nodes-base.telegram",
-      "typeVersion": 1.2,
-      "position": [
-        1456,
-        2160
-      ],
-      "id": "1963c025-52fc-45e4-9a3b-937193315a95",
-      "name": "Notify Staff - Cancel Failed",
-      "webhookId": "409f07d5-00da-42b3-b499-49629dcf44a5",
-      "credentials": {
-        "telegramApi": {
-          "id": "j8qR3zWSCvlrrdMD",
-          "name": "Telegram account 2"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "chatId": "8819045433",
-        "text": "=Hello {{ $json.patient_name }},\n\nWe received your request to cancel an appointment. However, our system could not locate an active upcoming booking under your phone number ({{ $json.patient_phone }}).\n\nIf you believe this is an error or would like to reschedule or verify an appointment, please contact the clinic front desk directly.\n\nThank you,\nClinic Care Team",
-        "additionalFields": {}
-      },
-      "type": "n8n-nodes-base.telegram",
-      "typeVersion": 1.2,
-      "position": [
-        1456,
-        2352
-      ],
-      "id": "b2e67141-39f0-45d7-8a6c-a7b5b58f821f",
-      "name": "Notify Patient - Cancel Failed",
-      "webhookId": "420c3e91-a6be-4af6-91d5-cb420f1e282f",
-      "credentials": {
-        "telegramApi": {
-          "id": "j8qR3zWSCvlrrdMD",
-          "name": "Telegram account 2"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "jsCode": "let patientName = 'Valued Patient';\nlet patientPhone = 'Unknown Phone';\nlet callId = null;\n\ntry {\n  const vapiData = $('Vapi Post-Call Ingest').first().json;\n  const extracted = $('Information Extractor').first()?.json || {};\n\n  // 1. Get structured patient name from LLM extractor, fallback to default\n  if (extracted.patient_name && extracted.patient_name.trim() !== '') {\n    patientName = extracted.patient_name.trim();\n  }\n\n  // 2. Get patient phone from LLM extractor, then Vapi payload metadata, fallback to default\n  patientPhone = extracted.patient_phone \n              || vapiData.message?.call?.customer?.number \n              || vapiData.customer?.number \n              || patientPhone;\n\n  callId = vapiData.message?.call?.id || null;\n} catch (error) {\n  // Safe defaults persist if node context is unlinked during partial manual test runs\n}\n\nreturn [{\n  json: {\n    patient_name: patientName,\n    patient_phone: patientPhone,\n    reason: 'Booking not found in database',\n    call_id: callId\n  }\n}];"
-      },
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        1232,
-        2256
-      ],
-      "id": "5d9b23fc-1745-49a2-a225-ccc2ed30afa3",
-      "name": "Code in JavaScript"
-    },
-    {
-      "parameters": {
-        "jsCode": "let patientName = 'Valued Patient';\nlet patientPhone = 'Unknown Phone';\nlet callId = null;\n\ntry {\n  const vapiData = $('Vapi Post-Call Ingest').first().json;\n  const extracted = $('Information Extractor').first()?.json || {};\n\n  // 1. Retrieve structured patient name from LLM extractor, fallback to default\n  if (extracted.patient_name && extracted.patient_name.trim() !== '') {\n    patientName = extracted.patient_name.trim();\n  }\n\n  // 2. Retrieve patient phone: LLM extractor -> Vapi metadata -> default fallback\n  patientPhone = extracted.patient_phone \n              || vapiData.message?.call?.customer?.number \n              || vapiData.customer?.number \n              || patientPhone;\n\n  callId = vapiData.message?.call?.id || null;\n} catch (error) {\n  // Safe defaults persist if node context is unlinked during partial manual test runs\n}\n\nreturn [{\n  json: {\n    patient_name: patientName,\n    patient_phone: patientPhone,\n    reason: 'Booking not found to reschedule',\n    call_id: callId\n  }\n}];"
-      },
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        1232,
-        1488
-      ],
-      "id": "69f2b401-b2ca-46fe-b9f9-a7e0a39d87a8",
-      "name": "Format Reschedule Fallback"
-    },
-    {
-      "parameters": {
-        "url": "=https://optbmkbhrrzavrogmoyl.supabase.co/rest/v1/appointments?patient_phone=eq.{{ encodeURIComponent($('Information Extractor').first().json.output?.patient_phone || $('Information Extractor').first().json.patient_phone || $('Vapi Post-Call Ingest').first().json.message?.customer?.number || '') }}",
-        "sendQuery": true,
-        "queryParameters": {
+        "url": "=https://optbmkbhrrzavrogmoyl.supabase.co/rest/v1/patients?patient_phone=eq.{{ encodeURIComponent($('Information Extractor').first().json.output?.patient_phone || $('Information Extractor').first().json.patient_phone || $('Vapi Post-Call Ingest').first().json.message?.customer?.number || '') }}&select=id,patient_name,patient_phone,telegram_chat_id",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
           "parameters": [
             {
-              "name": "order",
-              "value": "created_at.desc"
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9wdGJta2JocnJ6YXZyb2dtb3lsIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODcwNDIxNSwiZXhwIjoyMTA0MjgwMjE1fQ.vPnw8r6iK8IIb7RUpdKSqeMHxcKxh9lvhWY9hDQfwI0"
             },
             {
-              "name": "limit",
-              "value": "1"
+              "name": "Prefer",
+              "value": "resolution=merge-duplicates,return=representation"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
             }
           ]
         },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "=[\n  {\n    \"patient_phone\": \"{{ (() => { let digits = String($('Information Extractor').first().json.output?.patient_phone || $('Information Extractor').first().json.patient_phone || $('Vapi Post-Call Ingest').first().json.message?.customer?.number || '').replace(/\\D/g, ''); if (digits.length === 10) return '+91' + digits; if (digits.startsWith('91')) return '+' + digits; return digits ? '+' + digits : ''; })() }}\",\n    \"patient_name\": \"{{ $('Information Extractor').first().json.output?.patient_name || $('Information Extractor').first().json.patient_name || 'Patient' }}\"\n  }\n]",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1424,
+        1600
+      ],
+      "id": "77ca1097-2154-42b6-9676-5cc696002408",
+      "name": "Find Patient Details",
+      "alwaysOutputData": true,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "ENRUnHVlJJmOx0ml",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "3a0934bb-0aa1-4671-9582-a58508b57e72",
+              "name": "staff_chat_id",
+              "value": "8687974473",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        -496,
+        1312
+      ],
+      "id": "9866345f-54cc-4c2c-929f-13122036c669",
+      "name": "Clinic Config"
+    },
+    {
+      "parameters": {
+        "method": "DELETE",
+        "url": "=https://www.googleapis.com/calendar/v3/calendars/{{ encodeURIComponent($('Lookup Doctor').first().json.calendar_id || $('Lookup Doctor').first().json[0]?.calendar_id) }}/events/{{ $('Find Booking in Supabase').first().json.calendar_event_id }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleCalendarOAuth2Api",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1200,
+        1792
+      ],
+      "id": "9fdd52a6-3ec4-4071-ac2d-a1d85f1f86cd",
+      "name": "Google Calendar: Direct Delete",
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "executeOnce": true,
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "nHI98rSemdX3Pxog",
+          "name": "Google Calendar account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const calendarEvents = $('Check New Slot Availability').all();\nconst targetData = $('Prepare Slot Dates').first()?.json || {};\nconst existingEventId = targetData.existing_event_id;\n\n// Check if any returned item has an ID that does NOT match the existing appointment\nconst conflictingEvents = calendarEvents.filter(item => {\n  const id = item.json?.id;\n  return id && id !== existingEventId;\n});\n\nconst isFree = conflictingEvents.length === 0;\n\nreturn [{\n  json: {\n    ...targetData,\n    is_slot_free: isFree,\n    status_text: isFree ? \"free\" : \"conflict\"\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1648,
+        1024
+      ],
+      "id": "b31eb0b5-628a-42bc-bf90-b316f2963470",
+      "name": "Evaluate Slot Conflict"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "647a94a8-e23a-4e8d-9d07-c26230a841e9",
+              "leftValue": "={{ String($('HTTP Request').first().json.telegram_chat_id || $('HTTP Request').first().json[0]?.telegram_chat_id || '') }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2096,
+        1408
+      ],
+      "id": "6e4ef7ce-bdab-40a6-9dc8-6961d8d1cffd",
+      "name": "If (Patient Destination Exists?)"
+    },
+    {
+      "parameters": {
+        "tableId": "appointments",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "patient_id",
+              "fieldValue": "={{ $('HTTP Request').first().json[0]?.id || $('HTTP Request').first().json.id }}"
+            },
+            {
+              "fieldId": "doctor_name",
+              "fieldValue": "={{ $('Lookup Doctor').first().json.name || $('Lookup Doctor').first().json[0]?.name }}"
+            },
+            {
+              "fieldId": "appointment_start",
+              "fieldValue": "={{ $('Information Extractor').first().json.output?.appointment_start || $('Information Extractor').first().json.appointment_start }}"
+            },
+            {
+              "fieldId": "appointment_end",
+              "fieldValue": "={{ $('Information Extractor').first().json.output?.appointment_end || $('Information Extractor').first().json.appointment_end }}"
+            },
+            {
+              "fieldId": "chief_complaint",
+              "fieldValue": "={{ $('Information Extractor').first().json.output?.chief_complaint || $('Information Extractor').first().json.chief_complaint || 'Routine consultation' }}"
+            },
+            {
+              "fieldId": "calendar_event_id",
+              "fieldValue": "={{ $('Book Google Calendar Slot').first().json.id }}"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "=confirmed"
+            },
+            {
+              "fieldId": "patient_phone",
+              "fieldValue": "={{ (() => {\n  let raw = $('Information Extractor').first()?.json?.output?.patient_phone \n         || $('Information Extractor').first()?.json?.patient_phone \n         || $('Clinic Config').first()?.json?.patient_phone \n         || $('Clinic Config').first()?.json?.caller_phone \n         || $('Vapi Post-Call Ingest').first()?.json?.message?.customer?.number \n         || '';\n  let digits = String(raw).replace(/\\D/g, '');\n  if (!digits) return null;\n  if (digits.length === 10) return '+91' + digits;\n  if (digits.startsWith('91') && digits.length === 12) return '+' + digits;\n  return '+' + digits;\n})() }}"
+            },
+            {
+              "fieldId": "summary",
+              "fieldValue": "={{ $('Information Extractor').first().json.output?.chief_complaint || $('Information Extractor').first().json.chief_complaint || 'Routine general checkup' }}"
+            },
+            {
+              "fieldId": "doctor_id",
+              "fieldValue": "={{ $('Lookup Doctor').first().json.id || $('Lookup Doctor').first().json[0]?.id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1648,
+        1408
+      ],
+      "id": "4e18c613-b46e-4a35-b11f-685439719c59",
+      "name": "Insert Appointment",
+      "credentials": {
+        "supabaseApi": {
+          "id": "ZkIgYlLYiPcNzovJ",
+          "name": "Supabase account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "vapi-call-event",
+        "options": {}
+      },
+      "id": "5a94c8c9-37b9-4ead-98a6-691eb02ca641",
+      "name": "Vapi Post-Call Ingest",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -720,
+        1312
+      ],
+      "webhookId": "vapi-call-event"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://optbmkbhrrzavrogmoyl.supabase.co/rest/v1/triage_logs",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -1083,103 +1514,34 @@
             },
             {
               "name": "Authorization",
-              "value": "Bearer < YOUR_SECRET_API_KEY_HERE >"
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9wdGJta2JocnJ6YXZyb2dtb3lsIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODcwNDIxNSwiZXhwIjoyMTA0MjgwMjE1fQ.vPnw8r6iK8IIb7RUpdKSqeMHxcKxh9lvhWY9hDQfwI0"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
             }
           ]
         },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "=[\n  {\n    \"patient_name\": {{ JSON.stringify($('Information Extractor').first()?.json?.output?.patient_name || $('Information Extractor').first()?.json?.patient_name || 'Rahul') }},\n    \"patient_phone\": {{ JSON.stringify($('Information Extractor').first()?.json?.output?.patient_phone || $('Information Extractor').first()?.json?.patient_phone || $('Vapi Post-Call Ingest').first()?.json?.message?.customer?.number || '+919830127501') }},\n    \"summary\": {{ JSON.stringify($('Information Extractor').first()?.json?.output?.chief_complaint || 'Acute emergency symptoms reported during call') }},\n    \"status\": \"emergency_detected\"\n  }\n]",
         "options": {
-          "timeout": 10000
+          "sendCredentialsOnCrossOriginRedirect": false
         }
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        784,
-        1200
+        752,
+        928
       ],
-      "id": "6745e2fd-d750-48fb-98ac-c8883d0b23ef",
-      "name": "Find Booking to Reschedule",
+      "id": "56a88b17-adfe-4847-9edf-88275b6996c3",
+      "name": "Log Emergency Triage",
       "alwaysOutputData": true
-    },
-    {
-      "parameters": {
-        "modelName": "models/gemini-3.5-flash-lite",
-        "options": {
-          "temperature": 0
-        }
-      },
-      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
-      "typeVersion": 1.1,
-      "position": [
-        280,
-        1672
-      ],
-      "id": "bd140cde-b195-4150-b858-1ddad19b117f",
-      "name": "Google Gemini Chat Model",
-      "credentials": {
-        "googlePalmApi": {
-          "id": "lxaGWo2tt1Qr0tT7",
-          "name": "Google Gemini(PaLM) Api account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "updates": [
-          "message"
-        ],
-        "additionalFields": {}
-      },
-      "type": "n8n-nodes-base.telegramTrigger",
-      "typeVersion": 1.5,
-      "position": [
-        -464,
-        2576
-      ],
-      "id": "32dae129-1eeb-4d1b-a250-50c8ec4a80d0",
-      "name": "Telegram Trigger",
-      "webhookId": "74754ac1-7ef1-479d-9edd-590b1746059b",
-      "credentials": {
-        "telegramApi": {
-          "id": "j8qR3zWSCvlrrdMD",
-          "name": "Telegram account 2"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "jsCode": "// Bulletproof VAPI & Telephony Call Ingest Normalizer\nconst items = $input.all();\nif (!items.length) return [];\n\nconst item = items[0].json;\nconst raw = item.body || item;\n\n// 1. Safe extraction of VAPI transcript\nlet transcript = \n  raw.message?.artifact?.transcript ||\n  raw.message?.transcript ||\n  raw.artifact?.transcript ||\n  raw.transcript ||\n  raw.message?.text ||\n  raw.message?.call?.transcript ||\n  raw.message ||\n  raw.chatInput ||\n  raw.text ||\n  '';\n\n// Force transcript to be a clean string safely\nif (typeof transcript !== 'string') {\n  try {\n    transcript = JSON.stringify(transcript) || '';\n  } catch (e) {\n    transcript = String(transcript || '');\n  }\n}\ntranscript = transcript.trim();\n\n// 2. Extract Caller / Patient Phone Number\nlet incomingPhone = \n  raw.message?.call?.customer?.number ||\n  raw.call?.customer?.number ||\n  raw.customer?.number ||\n  raw.message?.customer?.number ||\n  raw.patient_phone ||\n  raw.phone ||\n  raw.caller_id ||\n  raw.From ||\n  null;\n\nif (incomingPhone && typeof incomingPhone === 'string') {\n  incomingPhone = incomingPhone.trim();\n}\n\nreturn [{\n  json: {\n    transcript: transcript,\n    patient_phone: incomingPhone,\n    incoming_phone: incomingPhone,\n    received_at: new Date().toISOString(),\n    vapi_call_id: raw.message?.call?.id || raw.call?.id || null\n  }\n}];"
-      },
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        -16,
-        1440
-      ],
-      "id": "00af0a2b-a2cc-4014-b047-d06eb6310e9d",
-      "name": "Parse Telegram Input"
-    },
-    {
-      "parameters": {
-        "chatId": "8819045433",
-        "text": "=Hello {{ $('Information Extractor').item.json.output.patient_name }}\n\nWe received your request to reschedule your appointment. However, our system could not complete the reschedule because the requested time slot is unavailable.\n\nIf you would like to choose another date/time or speak with our team, please contact the clinic front desk directly.\n\nThank you,\nClinic Care Team",
-        "additionalFields": {}
-      },
-      "type": "n8n-nodes-base.telegram",
-      "typeVersion": 1.2,
-      "position": [
-        2352,
-        1344
-      ],
-      "id": "9ee3695d-e862-41a8-9a56-b0b215425b80",
-      "name": "Notify Patient - Reschedule Slot Not Free",
-      "webhookId": "420c3e91-a6be-4af6-91d5-cb420f1e282f",
-      "credentials": {
-        "telegramApi": {
-          "id": "j8qR3zWSCvlrrdMD",
-          "name": "Telegram account 2"
-        }
-      }
     }
   ],
   "pinData": {
@@ -1189,27 +1551,17 @@
           "message": {
             "type": "end-of-call-report",
             "call": {
-              "id": "call_mock_unknown_patient_test",
+              "id": "vapi-test-emergency-001",
               "customer": {
-                "number": "+919888800000",
-                "name": "Unknown Patient"
+                "number": "+919830127501"
               }
             },
             "customer": {
-              "number": "+919888800000",
-              "name": "Unknown Patient"
+              "number": "+919830127501",
+              "name": "Rahul"
             },
-            "transcript": "AI: Hello, how can I help you today?\nCaller: Hi, I'd like to reschedule my appointment with Dr. Smith to September 28th at 11:00 AM.\nAI: One moment, let me locate your file.",
-            "summary": "Unknown caller requested to reschedule an appointment with Dr. Smith to September 28, 2026 at 11:00 AM, but has no record in the database.",
-            "analysis": {
-              "structuredData": {
-                "intent": "reschedule_appointment",
-                "patient_name": "Unknown Patient",
-                "caller_phone": "+919888800000",
-                "doctor_name": "Dr. Smith",
-                "requested_new_appointment_start": "2026-09-28T05:30:00.000Z",
-                "requested_new_appointment_end": "2026-09-28T06:00:00.000Z"
-              }
+            "artifact": {
+              "transcript": "Caller: Help, this is Rahul. I am having severe acute chest pain and shortness of breath right now. Please help me."
             }
           }
         }
@@ -1217,22 +1569,11 @@
     ]
   },
   "connections": {
-    "Vapi Post-Call Ingest": {
-      "main": [
-        [
-          {
-            "node": "Edit Fields",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Triage Router": {
       "main": [
         [
           {
-            "node": "Notify Staff Emergency",
+            "node": "Log Emergency Triage",
             "type": "main",
             "index": 0
           }
@@ -1265,7 +1606,7 @@
       "main": [
         [
           {
-            "node": "Send Patient Confirmation",
+            "node": "If (Patient Destination Exists?)",
             "type": "main",
             "index": 0
           }
@@ -1283,17 +1624,6 @@
         ]
       ]
     },
-    "Check Calendar Slot": {
-      "main": [
-        [
-          {
-            "node": "If (Slot is Free?)",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "If (Slot is Free?)": {
       "main": [
         [
@@ -1305,7 +1635,7 @@
         ],
         [
           {
-            "node": "Update a row (Rejected)",
+            "node": "Supabase - Log New Booking Conflict",
             "type": "main",
             "index": 0
           }
@@ -1334,7 +1664,7 @@
       "main": [
         [
           {
-            "node": "If (New Slot is Free?)",
+            "node": "Evaluate Slot Conflict",
             "type": "main",
             "index": 0
           }
@@ -1429,7 +1759,7 @@
       "main": [
         [
           {
-            "node": "Upsert Patient",
+            "node": "HTTP Request",
             "type": "main",
             "index": 0
           }
@@ -1441,17 +1771,6 @@
         [
           {
             "node": "If (Booking Found? - Cancel)",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Google Calendar: Delete Event": {
-      "main": [
-        [
-          {
-            "node": "Update Booking Status (Cancelled)",
             "type": "main",
             "index": 0
           }
@@ -1473,40 +1792,7 @@
       "main": [
         [
           {
-            "node": "Triage Router",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Upsert Patient": {
-      "main": [
-        [
-          {
-            "node": "Insert Appointment\"",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Insert Appointment\"": {
-      "main": [
-        [
-          {
-            "node": "Send Staff Confirmation",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Edit Fields": {
-      "main": [
-        [
-          {
-            "node": "Parse Telegram Input",
+            "node": "Lookup Doctor",
             "type": "main",
             "index": 0
           }
@@ -1528,7 +1814,7 @@
       "main": [
         [
           {
-            "node": "Google Calendar: Delete Event",
+            "node": "Google Calendar: Direct Delete",
             "type": "main",
             "index": 0
           }
@@ -1596,12 +1882,40 @@
         ]
       ]
     },
-    "Telegram Trigger": {
+    "Send Staff Rejection Notice": {
       "main": [
-        []
+        [
+          {
+            "node": "Notify Patient - Reschedule Slot Not Free",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
-    "Parse Telegram Input": {
+    "Lookup Doctor": {
+      "main": [
+        [
+          {
+            "node": "Triage Router",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Calendar Slot": {
+      "main": [
+        [
+          {
+            "node": "If (Slot is Free?)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Ingest Payload": {
       "main": [
         [
           {
@@ -1612,11 +1926,137 @@
         ]
       ]
     },
-    "Send Staff Rejection Notice": {
+    "HTTP Request": {
       "main": [
         [
           {
-            "node": "Notify Patient - Reschedule Slot Not Free",
+            "node": "Insert Appointment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase - Log New Booking Conflict": {
+      "main": [
+        [
+          {
+            "node": "Find Patient Details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Staff - Booking Conflict": {
+      "main": [
+        [
+          {
+            "node": "If (Patient Destination Exists?1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If (Patient Destination Exists?1": {
+      "main": [
+        [
+          {
+            "node": "Notify Patient - Slot Unavailable",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Patient Details": {
+      "main": [
+        [
+          {
+            "node": "Notify Staff - Booking Conflict",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clinic Config": {
+      "main": [
+        [
+          {
+            "node": "Format Ingest Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Calendar: Direct Delete": {
+      "main": [
+        [
+          {
+            "node": "Update Booking Status (Cancelled)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Evaluate Slot Conflict": {
+      "main": [
+        [
+          {
+            "node": "If (New Slot is Free?)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If (Patient Destination Exists?)": {
+      "main": [
+        [
+          {
+            "node": "Send Patient Confirmation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Appointment": {
+      "main": [
+        [
+          {
+            "node": "Send Staff Confirmation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Vapi Post-Call Ingest": {
+      "main": [
+        [
+          {
+            "node": "Clinic Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Staff Emergency": {
+      "main": [
+        []
+      ]
+    },
+    "Log Emergency Triage": {
+      "main": [
+        [
+          {
+            "node": "Notify Staff Emergency",
             "type": "main",
             "index": 0
           }
@@ -1632,7 +2072,7 @@
     "callerPolicy": "workflowsFromSameOwner",
     "availableInMCP": false
   },
-  "versionId": "4dbf7682-3364-46ff-9a96-a56be5f8a81c",
+  "versionId": "1d85b881-f4e5-4885-a96f-5d9a5f9d91ac",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "090ef948c970690e2d4a43e2dc50708f97c76adfb0bbca2d85a93197e7e375b6"
