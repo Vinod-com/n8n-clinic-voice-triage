@@ -21,6 +21,7 @@ A patient (Rahul Rampuria) has an existing 3:00 PM appointment with **Dr. Smith*
     }
   }
 }
+
 ### Inbound Payload
 {
   "message": {
