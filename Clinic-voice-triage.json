@@ -389,7 +389,7 @@
         "operation": "update",
         "calendar": {
           "__rl": true,
-          "value": "={{ $('Prepare Slot Dates').first().json.calendar_id }}",
+          "value": "={{ $('Prepare Slot Dates').first().json.calendar_id || $('Lookup Doctor').first().json.calendar_id }}",
           "mode": "id"
         },
         "eventId": "={{ $('Prepare Slot Dates').first().json.existing_event_id }}",
@@ -901,7 +901,7 @@
     },
     {
       "parameters": {
-        "url": "=https://optbmkbhrrzavrogmoyl.supabase.co/rest/v1/appointments?select=id,patient_id,doctor_id,appointment_start,appointment_end,calendar_event_id,status,patient_phone,doctors(id,name,calendar_id),patients(id,patient_name,telegram_chat_id)&patient_phone=eq.{{ encodeURIComponent($('Format Ingest Payload').first()?.json?.patient_phone || $('Information Extractor').first()?.json?.output?.patient_phone || '') }}&status=in.(confirmed,rescheduled)&appointment_start=gte.{{ $now.toISO() }}{{ $('Information Extractor').first()?.json?.output?.doctor_name ? ('&doctors.name=ilike.*' + encodeURIComponent($('Information Extractor').first().json.output.doctor_name) + '*') : '' }}&order=appointment_start.asc&limit=1",
+        "url": "=https://optbmkbhrrzavrogmoyl.supabase.co/rest/v1/appointments?select=id,patient_id,doctor_id,appointment_start,appointment_end,calendar_event_id,status,patient_phone,doctors(id,name,calendar_id),patients(id,patient_name,telegram_chat_id)&patient_phone=like.*{{ $('Format Ingest Payload').first()?.json?.phone_last_10 || '9830127501' }}*&doctor_id=eq.{{ $json.id }}&status=in.(confirmed,rescheduled)&appointment_start=gte.2026-10-08T12:00:00%2B05:30&order=appointment_start.asc&limit=1",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendQuery": true,
@@ -1702,7 +1702,7 @@
     },
     {
       "parameters": {
-        "url": "=https://optbmkbhrrzavrogmoyl.supabase.co/rest/v1/appointments?select=*,doctors(id,name,calendar_id),patients(telegram_chat_id)&patient_phone=eq.{{ encodeURIComponent($('Format Ingest Payload').first()?.json?.patient_phone || $('Information Extractor').first()?.json?.output?.patient_phone || '') }}&status=in.(confirmed,rescheduled)&appointment_start=gte.{{ $now.toISO() }}{{ $('Information Extractor').first()?.json?.output?.doctor_name ? ('&doctors.name=ilike.*' + encodeURIComponent($('Information Extractor').first().json.output.doctor_name) + '*') : '' }}&order=appointment_start.asc&limit=1",
+        "url": "=https://optbmkbhrrzavrogmoyl.supabase.co/rest/v1/appointments?select=id,patient_id,doctor_id,appointment_start,appointment_end,calendar_event_id,status,patient_phone,doctors(id,name,calendar_id),patients(id,patient_name,telegram_chat_id)&patient_phone=like.*{{ $('Format Ingest Payload').first()?.json?.phone_last_10 || '9830127501' }}*&doctor_id=eq.{{ $json.id }}&status=in.(confirmed,rescheduled)&appointment_start=gte.{{ $now.toISO() }}&order=appointment_start.asc&limit=1",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendHeaders": true,
@@ -1803,8 +1803,8 @@
       {
         "json": {
           "message": {
-            "transcript": "Hi, this is Rahul Rampuria. I have an appointment with Dr. Mark tomorrow at 11:30 AM, but something came up. Can we please reschedule it to tomorrow at 2:00 PM?",
-            "durationSeconds": 18,
+            "transcript": "Hi, this is Rahul Rampuria. I need to cancel my appointment with Dr. Mark today.",
+            "durationSeconds": 14,
             "endedReason": "customer-ended-call",
             "customer": {
               "number": "+919830127501"
@@ -2366,7 +2366,7 @@
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "versionId": "f9b4f027-388e-488d-9b8b-7e526b4db15f",
+  "versionId": "e6834ec3-e494-4236-b74e-8090fa1adaa9",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "e6336428ca01e68f655f78ff32f4048f001ad7d3e03444e0cedaf5aa9c29c7b9"
