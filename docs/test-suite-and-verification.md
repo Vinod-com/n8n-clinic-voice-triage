@@ -22,7 +22,7 @@ A patient (Rahul Rampuria) has an existing 3:00 PM appointment with **Dr. Smith*
   }
 }
 
-### Inbound Payload
+
 {
   "message": {
     "transcript": "Hi, this is Rahul Rampuria. I need to cancel my appointment with Dr. Mark today.",
