@@ -21,6 +21,7 @@ A patient (Rahul Rampuria) has an existing 3:00 PM appointment with **Dr. Smith*
     }
   }
 }
+```
 ---
 ## 2. Cancellation & Event Removal Test
 
@@ -28,6 +29,9 @@ A patient (Rahul Rampuria) has an existing 3:00 PM appointment with **Dr. Smith*
 The patient calls to cancel their 5:00 PM appointment with Dr. Mark.
 
 ### Inbound Payload
+
+
+```json
 {
   "message": {
     "transcript": "Hi, this is Rahul Rampuria. I need to cancel my appointment with Dr. Mark today.",
