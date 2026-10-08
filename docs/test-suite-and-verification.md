@@ -9,7 +9,7 @@ This document catalogs the integration payloads, edge-case scenarios, and verifi
 ### Scenario
 A patient (Rahul Rampuria) has an existing 3:00 PM appointment with **Dr. Smith** and an upcoming 4:00 PM appointment with **Dr. Mark**. The patient calls to reschedule Dr. Mark's appointment to 5:00 PM.
 
-### Inbound Payload
+
 ```json
 {
   "message": {
